@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+openai
+Pillow
+python-jose[cryptography]
+passlib[bcrypt]
+setuptools

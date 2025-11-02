@@ -1,0 +1,59 @@
+.app-gallery-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  color: white;
+}
+
+.app-gallery-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.back-button {
+  color: white;
+  font-size: 16px;
+}
+
+.back-button:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-gallery-title {
+  font-size: 2.5rem;
+  margin: 0;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.app-gallery-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.gallery-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  padding: 40px;
+}
+
+.gallery-placeholder h2 {
+  color: white;
+  margin: 20px 0 10px 0;
+  font-size: 1.8rem;
+}
+
+.gallery-placeholder p {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 5px 0;
+  font-size: 1.1rem;
+}

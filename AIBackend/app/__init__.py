@@ -1,0 +1,1 @@
+# FastAPI Diet Estimator Application

@@ -1,0 +1,86 @@
+# 开发环境配置
+name: dietestimator-dev
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=diet_estimator
+      - POSTGRES_USER=dietuser
+      - POSTGRES_PASSWORD=dietpass
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - diet-network-dev
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8080:8080"
+    networks:
+      - diet-network-dev
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_SERVER=db
+      - POSTGRES_USER=dietuser
+      - POSTGRES_PASSWORD=dietpass
+      - POSTGRES_DB=diet_estimator
+      - POSTGRES_PORT=5432
+      - ENVIRONMENT=development
+      - AI_BACKEND_URL=http://ai-backend:8001
+    depends_on:
+      - db
+      - ai-backend
+    networks:
+      - diet-network-dev
+    restart: unless-stopped
+    volumes:
+      - ../Backend:/app
+
+  ai-backend:
+    build:
+      context: ..
+      dockerfile: AIBackend/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - ENVIRONMENT=development
+    networks:
+      - diet-network-dev
+    restart: unless-stopped
+    volumes:
+      - ../AIBackend:/app
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend.dev
+    ports:
+      - "3000:3000"
+    networks:
+      - diet-network-dev
+    restart: unless-stopped
+    volumes:
+      - ../Frontend:/app
+      - /app/node_modules
+
+networks:
+  diet-network-dev:
+    driver: bridge
+
+volumes:
+  postgres_data_dev:

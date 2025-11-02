@@ -1,0 +1,5 @@
+gradio>=3.0.0
+paddleocr>=2.7.0
+paddlepaddle>=2.5.0
+requests
+openai

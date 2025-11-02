@@ -1,0 +1,70 @@
+.app-intro-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  color: white;
+}
+
+.app-intro-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.back-button {
+  color: white;
+  font-size: 16px;
+}
+
+.back-button:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.app-intro-title {
+  font-size: 2.5rem;
+  margin: 0;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.app-intro-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.intro-section {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.intro-section h2 {
+  color: white;
+  margin-bottom: 15px;
+  font-size: 1.8rem;
+}
+
+.intro-section h3 {
+  color: white;
+  margin-bottom: 10px;
+  font-size: 1.4rem;
+}
+
+.intro-section p {
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.intro-section ul, .intro-section ol {
+  color: rgba(255, 255, 255, 0.9);
+  padding-left: 20px;
+}
+
+.intro-section li {
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
