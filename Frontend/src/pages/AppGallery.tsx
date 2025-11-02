@@ -41,7 +41,6 @@ function AppGallery() {
   return (
     <ResponsiveLayout>
     <div style={{
-      minHeight: '100vh',
       background: 'linear-gradient(180deg, #fff0f6 0%, #f5f5f5 100%)',
       padding: '0'
     }}>

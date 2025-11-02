@@ -1,5 +1,5 @@
-import { Drawer, Avatar, Typography } from 'antd';
-import { HomeOutlined, FireOutlined, ExperimentOutlined, BarChartOutlined, SettingOutlined, InfoCircleOutlined, PictureOutlined, CloseOutlined } from '@ant-design/icons';
+import { Drawer, Typography } from 'antd';
+import { HomeOutlined, FireOutlined, ExperimentOutlined, BarChartOutlined, SettingOutlined, InfoCircleOutlined, PictureOutlined, CloseOutlined, GithubOutlined, HeartOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const { Title, Text } = Typography;
@@ -75,13 +75,15 @@ export default function MobileSidebar({ visible, onClose }: MobileSidebarProps) 
 
   // 渲染菜单内容的公共函数
   const renderMenuContent = () => {
+    const currentYear = new Date().getFullYear();
+
     // 合并所有菜单项
     const allMenuItems = [...menuItems, ...extraItems];
 
     return (
       <>
         {/* 菜单项列表 */}
-        <div style={{ padding: '0 16px', marginBottom: '24px' }}>
+        <div style={{ padding: '0 16px', marginBottom: '16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {allMenuItems.map(item => {
               const Icon = item.icon;
@@ -161,6 +163,87 @@ export default function MobileSidebar({ visible, onClose }: MobileSidebarProps) 
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* 版权信息 */}
+        <div style={{
+          padding: '16px',
+          borderTop: '1px solid #e6f7ff',
+          background: 'rgba(255, 255, 255, 0.8)',
+          borderRadius: '0 0 12px 12px'
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {/* 主要版权信息 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Text style={{
+                fontSize: '12px',
+                color: '#595959',
+                fontWeight: '500'
+              }}>
+                © {currentYear} Diet Estimator
+              </Text>
+              <Text style={{
+                fontSize: '12px',
+                color: '#ff4d4f'
+              }}>
+                <HeartOutlined style={{ marginRight: '4px' }} />
+                Made with love
+              </Text>
+            </div>
+
+            {/* GitHub链接和版本信息 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              <a
+                href="https://github.com/Liyulingyue/DietEstimator"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  color: '#1890ff',
+                  textDecoration: 'none',
+                  transition: 'color 0.3s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#40a9ff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#1890ff';
+                }}
+              >
+                <GithubOutlined />
+                GitHub
+              </a>
+
+              <Text style={{
+                fontSize: '11px',
+                color: '#bfbfbf'
+              }}>
+                •
+              </Text>
+
+              <Text style={{
+                fontSize: '11px',
+                color: '#bfbfbf',
+                fontWeight: '500'
+              }}>
+                v1.0.0
+              </Text>
+            </div>
           </div>
         </div>
       </>

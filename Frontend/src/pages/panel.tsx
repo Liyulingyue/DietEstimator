@@ -38,7 +38,6 @@ export default function Panel() {
   return (
     <div style={{ 
       width: '100vw',
-      minHeight: '100vh',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       display: 'flex',
       justifyContent: 'center',

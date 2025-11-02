@@ -16,16 +16,17 @@ export default function Login() {
       setLoading(false);
       const username = values.username ? String(values.username).trim() : '';
       const password = values.password ? String(values.password).trim() : '';
-      if (username && password) {
+      
+      // 模拟登录验证：用户名和密码都必须是 "test"
+      if (username === 'test' && password === 'test') {
         // 登录成功：写入登录标记和用户 id（这里用 username 作为示例 userId）
         const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString(); // 7 天过期
         document.cookie = `isLogin=true; path=/; expires=${expires}`;
-        document.cookie = `userId=${encodeURIComponent(username + password)}; path=/; expires=${expires}`;
+        document.cookie = `userId=${encodeURIComponent(username)}; path=/; expires=${expires}`;
         message.success('登录成功');
         navigate('/');
       } else {
-        // 如果只输入了空格也会被认为为空，提示更准确
-        message.error('请输入用户名和密码');
+        message.error('用户名或密码错误');
       }
     }, 800);
   };

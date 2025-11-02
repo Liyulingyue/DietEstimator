@@ -13,6 +13,7 @@ from app.models.schemas import (
     AnalysisMethod
 )
 from app.services.estimator import estimator_service
+from app.services.llm_service import llm_service
 
 router = APIRouter()
 
@@ -175,3 +176,29 @@ async def get_available_methods():
         "methods": methods,
         "total": len(methods)
     }
+
+@router.post("/test-connection")
+async def test_ai_connection(
+    model_url: str = Form(..., description="模型API地址"),
+    model_name: str = Form(..., description="模型名称"),
+    api_key: str = Form(..., description="API密钥")
+):
+    """
+    测试AI连接连通性
+    
+    Args:
+        model_url: 模型API地址
+        model_name: 模型名称
+        api_key: API密钥
+        
+    Returns:
+        测试结果
+    """
+    try:
+        result = llm_service.test_ai_connection(model_url, model_name, api_key)
+        return result
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"测试过程中发生错误: {str(e)}"
+        }

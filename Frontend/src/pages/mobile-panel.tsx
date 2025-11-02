@@ -44,8 +44,7 @@ export default function MobilePanel() {
   return (
     <ResponsiveLayout>
     <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #f9f0ff 0%, #f5f5f5 100%)',
+      background: 'linear-gradient(180deg, #f0f9ff 0%, #f5f5f5 100%)',
       padding: '0'
     }}>
       {/* 顶部标题栏 */}

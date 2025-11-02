@@ -37,7 +37,7 @@ export default function AppRouter() {
         <Route path="/app/analyse" element={<RequireAuth><MobileAnalyse /></RequireAuth>} />
         <Route path="/app/labs" element={<RequireAuth><MobileLabs /></RequireAuth>} />
         <Route path="/app/panel" element={<RequireAuth><MobilePanel /></RequireAuth>} />
-        <Route path="/app/config" element={<RequireAuth><AppConfig /></RequireAuth>} />
+        <Route path="/app/config" element={<AppConfig />} />
         <Route path="/app/introduction" element={<RequireAuth><AppIntroduction /></RequireAuth>} />
         <Route path="/app/gallery" element={<RequireAuth><AppGallery /></RequireAuth>} />
       </Routes>

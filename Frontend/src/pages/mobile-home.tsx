@@ -56,15 +56,14 @@ export default function MobileHome() {
   };
 
   return (
-    <ResponsiveLayout>
+    <ResponsiveLayout showGitHubButton={true}>
       <div style={{
-        minHeight: '100vh',
         background: 'linear-gradient(180deg, #f0f5ff 0%, #f5f5f5 100%)',
         padding: '0'
       }}>
         {/* 顶部头部区域 */}
         <PageHeader
-          title="饮食评估助手"
+          title="Diet Estimator"
           description="基于AI的食物热量分析助手"
         />
 

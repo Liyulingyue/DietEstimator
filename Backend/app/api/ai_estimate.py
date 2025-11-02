@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Form
 from typing import List
 from sqlalchemy.orm import Session
 import httpx
@@ -150,5 +150,44 @@ async def proxy_food_portion(
             raise HTTPException(status_code=502, detail='Invalid response from AI backend')
         if resp.status_code != 200:
             logger.error('AI backend food_portion returned error: %s', data)
+            raise HTTPException(status_code=resp.status_code, detail=data)
+        return data
+
+@router.post("/test-connection")
+async def proxy_test_connection(
+    model_url: str = Form(...),
+    model_name: str = Form(...),
+    api_key: str = Form(...),
+    db: Session = Depends(get_db),
+    user_id: str = "1"
+):
+    """将测试连接请求中转到 AI 后端"""
+    logger.debug(f"proxy_test_connection called with model_url={model_url}, model_name={model_name}")
+    url = _backend_url('/api/v1/test-connection')
+    logger.debug(f"Forwarding to AI backend: url={url}")
+    
+    # 准备表单数据
+    data = {
+        'model_url': model_url,
+        'model_name': model_name,
+        'api_key': api_key
+    }
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            resp = await client.post(url, data=data)
+            logger.debug(f"AI backend response status={resp.status_code}")
+        except Exception as e:
+            logger.exception('Error forwarding to AI backend (test-connection)')
+            raise HTTPException(status_code=502, detail=str(e))
+        try:
+            data = resp.json()
+            logger.info(f"AI backend test-connection response: {data}")
+        except Exception:
+            body = await resp.aread()
+            logger.error('Non-JSON response from AI backend (test-connection): %s', body)
+            raise HTTPException(status_code=502, detail='Invalid response from AI backend')
+        if resp.status_code != 200:
+            logger.error('AI backend test-connection returned error: %s', data)
             raise HTTPException(status_code=resp.status_code, detail=data)
         return data

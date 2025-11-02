@@ -1,18 +1,41 @@
-import { useNavigate } from 'react-router-dom'
-import { Button, Card, Switch, Select, Space, Typography, Avatar } from 'antd'
-import { UserOutlined, LogoutOutlined, EditOutlined, HistoryOutlined } from '@ant-design/icons'
+import { Button, Card, Select, Space, Typography, Avatar, Input, Divider, message, Form, Modal } from 'antd'
+import { UserOutlined, LogoutOutlined, EditOutlined, HistoryOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
+import { logout, isLogin } from '../utils/auth'
 import { useState } from 'react'
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
 function AppConfig() {
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [fontSize, setFontSize] = useState(14);
+  const [loginForm] = Form.useForm();
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [testLoading, setTestLoading] = useState(false);
+  const [testModalVisible, setTestModalVisible] = useState(false);
+  const [testResult, setTestResult] = useState<{status: string, message: string, response?: string} | null>(null);
+
+  // AI配置状态 - 从localStorage加载或使用默认值
+  const [aiConfig, setAiConfig] = useState(() => {
+    const savedConfig = localStorage.getItem('aiConfig');
+    if (savedConfig) {
+      try {
+        return JSON.parse(savedConfig);
+      } catch (e) {
+        console.error('Failed to parse saved AI config:', e);
+      }
+    }
+    // 返回默认配置
+    return {
+      modelUrl: 'https://aistudio.baidu.com/llm/lmapi/v3',
+      modelName: 'ERNIE-4.5-VL-28B-A3B',
+      apiKey: '',
+      preference: 'server' // 'custom' 或 'server'
+    };
+  });
+
+  // 检查登录状态
+  const isLoggedIn = isLogin();
 
   // 模拟用户数据
   const userInfo = {
@@ -25,17 +48,97 @@ function AppConfig() {
   };
 
   const handleLogout = () => {
-    // TODO: 实现登出逻辑
-    navigate('/');
+    // 使用auth工具的logout函数清除登录状态
+    logout();
+    // 显示退出成功提示
+    message.success('已退出登录');
+    // 强制重新渲染组件
+    window.location.reload();
+  };
+
+  const handleLogin = (values: { username?: string; password?: string }) => {
+    setLoginLoading(true);
+    // 简单模拟登录，实际可替换为接口请求
+    setTimeout(() => {
+      setLoginLoading(false);
+      const username = values.username ? String(values.username).trim() : '';
+      const password = values.password ? String(values.password).trim() : '';
+      
+      // 模拟登录验证：用户名和密码都必须是 "test"
+      if (username === 'test' && password === 'test') {
+        // 登录成功：写入登录标记和用户 id
+        const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString(); // 7 天过期
+        document.cookie = `isLogin=true; path=/; expires=${expires}`;
+        document.cookie = `userId=${encodeURIComponent(username)}; path=/; expires=${expires}`;
+        message.success('登录成功');
+        // 强制重新渲染组件
+        window.location.reload();
+      } else {
+        message.error('用户名或密码错误');
+      }
+    }, 800);
+  };
+
+  const handleAiConfigChange = (field: string, value: string) => {
+    setAiConfig((prev: any) => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSaveAiConfig = () => {
+    try {
+      // 保存AI配置到本地存储
+      localStorage.setItem('aiConfig', JSON.stringify(aiConfig));
+      message.success('AI配置已保存');
+      console.log('保存AI配置:', aiConfig);
+    } catch (error) {
+      console.error('保存AI配置失败:', error);
+      message.error('保存AI配置失败');
+    }
+  };
+
+  const handleTestConnection = async () => {
+    if (!aiConfig.modelUrl.trim() || !aiConfig.modelName.trim() || !aiConfig.apiKey.trim()) {
+      message.error('请先填写完整的AI配置信息');
+      return;
+    }
+
+    setTestLoading(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/test-connection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          model_url: aiConfig.modelUrl,
+          model_name: aiConfig.modelName,
+          api_key: aiConfig.apiKey,
+        }),
+      });
+
+      const result = await response.json();
+      setTestResult(result);
+      setTestModalVisible(true);
+    } catch (error) {
+      console.error('测试连接失败:', error);
+      if (error instanceof SyntaxError) {
+        message.error('服务器响应格式错误，请检查后端服务');
+      } else {
+        message.error('连接测试失败，请检查网络或配置');
+      }
+    } finally {
+      setTestLoading(false);
+    }
   };
 
   return (
     <ResponsiveLayout>
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(180deg, #e6f7ff 0%, #f5f5f5 100%)',
-      padding: '0'
-    }}>
+      <div style={{
+        background: 'linear-gradient(180deg, #e6f7ff 0%, #f5f5f5 100%)',
+        padding: '0'
+      }}>
       {/* 顶部标题栏 */}
       <PageHeader
         title={<><UserOutlined style={{ marginRight: '8px' }} />用户管理与配置</>}
@@ -45,215 +148,574 @@ function AppConfig() {
       />
 
       <div style={{ padding: '0 16px' }}>
-        {/* 用户信息卡片 */}
-        <Card
-          style={{
-            borderRadius: '20px',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-            marginBottom: '16px'
-          }}
-          bodyStyle={{ padding: '24px' }}
-        >
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            <Avatar
-              size={64}
-              icon={<UserOutlined />}
-              style={{
-                background: 'linear-gradient(135deg, #1890ff, #36cfc9)',
-                fontSize: '28px'
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <Title level={4} style={{ margin: 0, marginBottom: '4px', fontSize: '18px', fontWeight: '600' }}>
-                {userInfo.name}
-              </Title>
-              <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>
-                {userInfo.email}
-              </Text>
-              <br />
-              <Text style={{ fontSize: '12px', color: '#bfbfbf' }}>
-                加入时间: {userInfo.joinDate}
-              </Text>
-            </div>
-          </div>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '16px',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #f0f9ff, #e6f7ff)',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center'
-            }}>
-              <Text style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: '#1890ff',
-                display: 'block'
-              }}>
-                {userInfo.totalAnalyses}
-              </Text>
-              <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>总分析次数</Text>
-            </div>
-            <div style={{
-              background: 'linear-gradient(135deg, #f6ffed, #f0f9ff)',
-              borderRadius: '12px',
-              padding: '16px',
-              textAlign: 'center'
-            }}>
-              <Text style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: '#52c41a',
-                display: 'block'
-              }}>
-                {userInfo.lastLogin}
-              </Text>
-              <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>最后登录</Text>
-            </div>
-          </div>
-
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Button
-              type="default"
-              icon={<EditOutlined />}
-              block
-              style={{
-                borderRadius: '12px',
-                height: '44px',
-                border: '1px solid #d9d9d9'
-              }}
-            >
-              编辑个人资料
-            </Button>
-            <Button
-              type="default"
-              icon={<HistoryOutlined />}
-              block
-              style={{
-                borderRadius: '12px',
-                height: '44px',
-                border: '1px solid #d9d9d9'
-              }}
-            >
-              查看历史记录
-            </Button>
-          </Space>
-        </Card>
-
-        {/* 应用设置 */}
-        <Card
-          style={{
-            borderRadius: '20px',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-            marginBottom: '16px'
-          }}
-          bodyStyle={{ padding: '24px' }}
-        >
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '20px'
-          }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #faad14, #fa8c16)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <span style={{ fontSize: '20px' }}>⚙️</span>
-            </div>
-            <Title level={4} style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              应用设置
-            </Title>
-          </div>
-
-          <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0'
-            }}>
-              <Text style={{ fontSize: '16px' }}>推送通知</Text>
-              <Switch
-                checked={notifications}
-                onChange={setNotifications}
-                style={{ background: notifications ? '#1890ff' : '#d9d9d9' }}
-              />
-            </div>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0'
-            }}>
-              <Text style={{ fontSize: '16px' }}>深色模式</Text>
-              <Switch
-                checked={darkMode}
-                onChange={setDarkMode}
-                style={{ background: darkMode ? '#1890ff' : '#d9d9d9' }}
-              />
-            </div>
-
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '12px 0'
-            }}>
-              <Text style={{ fontSize: '16px' }}>字体大小</Text>
-              <Select
-                value={fontSize}
-                onChange={setFontSize}
-                style={{ width: '80px' }}
-                size="small"
-              >
-                <Option value={12}>小</Option>
-                <Option value={14}>中</Option>
-                <Option value={16}>大</Option>
-              </Select>
-            </div>
-          </Space>
-        </Card>
-
-        {/* 登出按钮 */}
-        <div style={{ padding: '0 16px 32px 16px' }}>
-          <Button
-            type="primary"
-            danger
-            icon={<LogoutOutlined />}
-            block
-            size="large"
+        {/* 根据登录状态显示不同内容 */}
+        {isLoggedIn ? (
+          /* 已登录状态：显示用户信息卡片 */
+          <Card
             style={{
-              borderRadius: '12px',
-              height: '48px',
-              fontSize: '16px',
-              fontWeight: '600'
+              borderRadius: '20px',
+              border: 'none',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+              marginBottom: '16px'
             }}
-            onClick={handleLogout}
+            bodyStyle={{ padding: '24px' }}
           >
-            退出登录
-          </Button>
-        </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              marginBottom: '20px'
+            }}>
+              <Avatar
+                size={64}
+                icon={<UserOutlined />}
+                style={{
+                  background: 'linear-gradient(135deg, #1890ff, #36cfc9)',
+                  fontSize: '28px'
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <Title level={4} style={{ margin: 0, marginBottom: '4px', fontSize: '18px', fontWeight: '600' }}>
+                  {userInfo.name}
+                </Title>
+                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>
+                  {userInfo.email}
+                </Text>
+                <br />
+                <Text style={{ fontSize: '12px', color: '#bfbfbf' }}>
+                  加入时间: {userInfo.joinDate}
+                </Text>
+              </div>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '16px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #f0f9ff, #e6f7ff)',
+                borderRadius: '12px',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <Text style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#1890ff',
+                  display: 'block'
+                }}>
+                  {userInfo.totalAnalyses}
+                </Text>
+                <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>总分析次数</Text>
+              </div>
+              <div style={{
+                background: 'linear-gradient(135deg, #f6ffed, #f0f9ff)',
+                borderRadius: '12px',
+                padding: '16px',
+                textAlign: 'center'
+              }}>
+                <Text style={{
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: '#52c41a',
+                  display: 'block'
+                }}>
+                  {userInfo.lastLogin}
+                </Text>
+                <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>最后登录</Text>
+              </div>
+            </div>
+
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <Button
+                type="default"
+                icon={<EditOutlined />}
+                block
+                style={{
+                  borderRadius: '12px',
+                  height: '44px',
+                  border: '1px solid #d9d9d9'
+                }}
+              >
+                编辑个人资料
+              </Button>
+              <Button
+                type="default"
+                icon={<HistoryOutlined />}
+                block
+                style={{
+                  borderRadius: '12px',
+                  height: '44px',
+                  border: '1px solid #d9d9d9'
+                }}
+              >
+                查看历史记录
+              </Button>
+              <Button
+                type="primary"
+                danger
+                icon={<LogoutOutlined />}
+                block
+                style={{
+                  borderRadius: '12px',
+                  height: '44px',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}
+                onClick={handleLogout}
+              >
+                退出登录
+              </Button>
+            </Space>
+          </Card>
+        ) : (
+          /* 未登录状态：显示登录表单 */
+          <Card
+            style={{
+              borderRadius: '20px',
+              border: 'none',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+              marginBottom: '16px'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #1890ff, #36cfc9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <UserOutlined style={{ fontSize: '20px', color: 'white' }} />
+              </div>
+              <Title level={4} style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                用户登录
+              </Title>
+            </div>
+
+            <Form
+              form={loginForm}
+              name="login"
+              onFinish={handleLogin}
+              onFinishFailed={() => {
+                message.error('表单校验失败，请检查输入');
+              }}
+            >
+              <Form.Item name="username" rules={[{ required: true, whitespace: true, message: '请输入用户名' }]}>
+                <Input placeholder="用户名" style={{ borderRadius: '8px' }} />
+              </Form.Item>
+              <Form.Item name="password" rules={[{ required: true, whitespace: true, message: '请输入密码' }]}>
+                <Input.Password placeholder="密码" style={{ borderRadius: '8px' }} />
+              </Form.Item>
+              <Form.Item>
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
+                  block 
+                  loading={loginLoading}
+                  style={{
+                    borderRadius: '12px',
+                    height: '44px',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
+                >
+                  登录
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        )}
+
+        {/* AI配置 - 始终显示 */}
+        <Card
+          style={{
+            borderRadius: '20px',
+            border: 'none',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+            marginBottom: '16px'
+          }}
+          bodyStyle={{ padding: '24px' }}
+        >
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #722ed1, #9c27b0)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <RobotOutlined style={{ fontSize: '20px', color: 'white' }} />
+              </div>
+              <Title level={4} style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+                AI配置
+              </Title>
+            </div>
+
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          {/* 模型URL */}
+          <div>
+            <Text style={{ fontSize: '14px', fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+              模型URL
+            </Text>
+            <Input
+              placeholder="请输入模型API地址"
+              value={aiConfig.modelUrl}
+              onChange={(e) => handleAiConfigChange('modelUrl', e.target.value)}
+              style={{ borderRadius: '8px' }}
+            />
+          </div>
+
+          {/* 模型名称 */}
+          <div>
+            <Text style={{ fontSize: '14px', fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+              模型名称
+            </Text>
+            <Input
+              placeholder="请输入模型名称"
+              value={aiConfig.modelName}
+              onChange={(e) => handleAiConfigChange('modelName', e.target.value)}
+              style={{ borderRadius: '8px' }}
+            />
+          </div>
+
+          {/* API Key */}
+          <div>
+            <Text style={{ fontSize: '14px', fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+              <KeyOutlined style={{ marginRight: '6px' }} />
+              API Key
+            </Text>
+            <Input.Password
+              placeholder="请输入API密钥"
+              value={aiConfig.apiKey}
+              onChange={(e) => handleAiConfigChange('apiKey', e.target.value)}
+              style={{ borderRadius: '8px' }}
+            />
+            <Text style={{
+              fontSize: '12px',
+              color: '#8c8c8c',
+              display: 'block',
+              marginTop: '4px',
+              fontStyle: 'italic'
+            }}>
+              💡 可从 <a
+                href="https://aistudio.baidu.com/account/accessToken"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: '#1890ff',
+                  textDecoration: 'underline'
+                }}
+              >
+                星河社区
+              </a> 获取API Key
+            </Text>
+          </div>
+
+          {/* 调用偏好 */}
+          <div>
+            <Text style={{ fontSize: '14px', fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+              <SettingOutlined style={{ marginRight: '6px' }} />
+              调用偏好
+            </Text>
+            <Select
+              value={aiConfig.preference}
+              onChange={(value) => handleAiConfigChange('preference', value)}
+              style={{ width: '100%', borderRadius: '8px' }}
+            >
+              <Option value="custom">自定义模型</Option>
+              <Option value="server">服务器调用点</Option>
+            </Select>
+            <Text style={{
+              fontSize: '12px',
+              color: '#8c8c8c',
+              display: 'block',
+              marginTop: '4px',
+              fontStyle: 'italic',
+              lineHeight: '1.4'
+            }}>
+              💡 服务器调用点需要登录后生效，如服务器资源不足将自动使用自定义信息
+            </Text>
+          </div>
+
+          <Divider style={{ margin: '16px 0' }} />
+
+          {/* 操作按钮区域 */}
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Button
+              type="default"
+              icon={<ApiOutlined />}
+              block
+              loading={testLoading}
+              style={{
+                borderRadius: '12px',
+                height: '44px',
+                fontSize: '16px',
+                fontWeight: '600',
+                border: '1px solid #1890ff'
+              }}
+              onClick={handleTestConnection}
+            >
+              测试自定义模型连通性
+            </Button>
+            
+            <Button
+              type="primary"
+              block
+              size="large"
+              style={{
+                borderRadius: '12px',
+                height: '44px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: 'linear-gradient(135deg, #722ed1, #9c27b0)',
+                border: 'none'
+              }}
+              onClick={handleSaveAiConfig}
+            >
+              保存AI配置
+            </Button>
+          </Space>
+        </Space>
+          </>
+
+          {/* 测试连接结果弹窗 */}
+          <Modal
+            title={
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1890ff'
+              }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #1890ff, #36cfc9)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <RobotOutlined style={{ fontSize: '16px', color: 'white' }} />
+                </div>
+                AI连接测试结果
+              </div>
+            }
+            open={testModalVisible}
+            onCancel={() => setTestModalVisible(false)}
+            footer={[
+              <Button
+                key="close"
+                onClick={() => setTestModalVisible(false)}
+                style={{
+                  borderRadius: '8px',
+                  height: '36px',
+                  fontWeight: '500'
+                }}
+              >
+                关闭
+              </Button>
+            ]}
+            width={650}
+            centered
+            styles={{
+              body: {
+                padding: '24px',
+                background: 'linear-gradient(180deg, #f8f9ff 0%, #ffffff 100%)'
+              }
+            }}
+            style={{
+              borderRadius: '16px',
+              overflow: 'hidden'
+            }}
+          >
+            {testResult && (
+              <div style={{ minHeight: '200px' }}>
+                {/* 状态展示区域 */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '24px',
+                  padding: '20px',
+                  borderRadius: '12px',
+                  background: testResult.status === 'success'
+                    ? 'linear-gradient(135deg, #f6ffed 0%, #f0f9ea 100%)'
+                    : 'linear-gradient(135deg, #fff2f0 0%, #fef2f1 100%)',
+                  border: testResult.status === 'success'
+                    ? '1px solid #b7eb8f'
+                    : '1px solid #ffccc7',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: '48px',
+                      marginBottom: '8px'
+                    }}>
+                      {testResult.status === 'success' ? '🎉' : '⚠️'}
+                    </div>
+                    <div style={{
+                      fontSize: '20px',
+                      fontWeight: '600',
+                      color: testResult.status === 'success' ? '#52c41a' : '#cf1322',
+                      marginBottom: '4px'
+                    }}>
+                      {testResult.status === 'success' ? '连接测试成功' : '连接测试失败'}
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      color: testResult.status === 'success' ? '#389e0d' : '#a8071a'
+                    }}>
+                      {testResult.status === 'success' ? 'AI模型响应正常' : '请检查配置信息'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 内容展示区域 */}
+                {testResult.status === 'success' ? (
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '16px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#1890ff'
+                    }}>
+                      <ApiOutlined />
+                      AI回复内容
+                    </div>
+                    <Card
+                      style={{
+                        borderRadius: '12px',
+                        border: '1px solid #d9d9d9',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
+                      }}
+                      bodyStyle={{
+                        padding: '20px',
+                        maxHeight: '300px',
+                        overflow: 'auto'
+                      }}
+                    >
+                      <div style={{
+                        background: '#f8f9fa',
+                        border: '1px solid #e9ecef',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        fontFamily: '"SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace',
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        color: '#212529',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}>
+                        {testResult.response || 'AI没有返回内容'}
+                      </div>
+                    </Card>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '16px',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#cf1322'
+                    }}>
+                      <KeyOutlined />
+                      错误详情
+                    </div>
+                    <Card
+                      style={{
+                        borderRadius: '12px',
+                        border: '1px solid #ffccc7',
+                        boxShadow: '0 2px 8px rgba(255, 0, 0, 0.08)',
+                        background: 'linear-gradient(135deg, #fff2f0 0%, #fef2f1 100%)'
+                      }}
+                      bodyStyle={{
+                        padding: '20px'
+                      }}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px'
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          color: '#cf1322',
+                          marginTop: '2px'
+                        }}>
+                          ⚠️
+                        </div>
+                        <div>
+                          <div style={{
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            color: '#cf1322',
+                            marginBottom: '4px'
+                          }}>
+                            连接失败
+                          </div>
+                          <div style={{
+                            fontSize: '14px',
+                            color: '#8b4513',
+                            lineHeight: '1.5'
+                          }}>
+                            {testResult.message}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
+                {/* 底部提示 */}
+                <div style={{
+                  marginTop: '24px',
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, #f0f2ff 0%, #f8f9ff 100%)',
+                  borderRadius: '8px',
+                  border: '1px solid #d6e4ff',
+                  textAlign: 'center'
+                }}>
+                  <Text style={{
+                    fontSize: '13px',
+                    color: '#666',
+                    fontStyle: 'italic'
+                  }}>
+                    💡 提示：测试结果仅用于验证配置有效性，不代表实际分析能力
+                  </Text>
+                </div>
+              </div>
+            )}
+          </Modal>
+      </Card>
       </div>
     </div>
     </ResponsiveLayout>

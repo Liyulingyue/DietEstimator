@@ -28,7 +28,6 @@ export default function Labs() {
   return (
     <div style={{ 
       width: '100vw',
-      minHeight: '100vh',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
       display: 'flex',
       justifyContent: 'center',
@@ -98,7 +97,6 @@ export default function Labs() {
 
         {/* 识别营养成分表 */}
         <section id="nutrition" style={{
-          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -159,7 +157,6 @@ export default function Labs() {
 
         {/* 估算份量 */}
         <section id="portion" style={{
-          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -220,7 +217,6 @@ export default function Labs() {
 
         {/* 结合计划评估食物 */}
         <section id="assessment" style={{
-          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

@@ -1,26 +1,24 @@
 import { Button } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
+import { GithubOutlined } from '@ant-design/icons';
 
-interface FloatingMenuButtonProps {
-  onClick: () => void;
+interface GitHubButtonProps {
   visible?: boolean;
 }
 
-export default function FloatingMenuButton({ onClick, visible = true }: FloatingMenuButtonProps) {
+export default function GitHubButton({ visible = true }: GitHubButtonProps) {
   if (!visible) return null;
 
   return (
     <Button
-      type="primary"
+      type="text"
       shape="circle"
       size="large"
-      icon={<MenuOutlined style={{ color: '#262626' }} />}
-      onClick={onClick}
-      className="floating-menu-button"
+      icon={<GithubOutlined style={{ color: '#262626' }} />}
+      onClick={() => window.open('https://github.com/Liyulingyue/DietEstimator', '_blank')}
       style={{
         position: 'fixed',
         top: '20px',
-        left: '20px',
+        right: '20px',
         zIndex: 1001,
         width: '48px',
         height: '48px',

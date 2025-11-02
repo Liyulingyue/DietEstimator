@@ -14,7 +14,6 @@ export default function MobileAnalyse() {
   return (
     <ResponsiveLayout>
     <div style={{
-      minHeight: '100vh',
       background: 'linear-gradient(180deg, #f6ffed 0%, #f5f5f5 100%)',
       padding: '0'
     }}>
