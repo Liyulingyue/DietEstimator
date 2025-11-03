@@ -1,8 +1,8 @@
 """init_all
 
-Revision ID: fedf2884ea57
+Revision ID: 5c48f183c4dc
 Revises: 
-Create Date: 2025-11-02 19:02:18.038111
+Create Date: 2025-11-03 21:42:12.618419
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'fedf2884ea57'
+revision: str = '5c48f183c4dc'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -36,11 +36,28 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_diet_records_id'), 'diet_records', ['id'], unique=False)
     op.create_index(op.f('ix_diet_records_user_id'), 'diet_records', ['user_id'], unique=False)
+    op.create_table('sessions',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('session_id', sa.String(length=36), nullable=True),
+    sa.Column('user_id', sa.String(length=255), nullable=True),
+    sa.Column('username', sa.String(length=50), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('is_active', sa.Integer(), nullable=True),
+    sa.Column('ip_address', sa.String(length=45), nullable=True),
+    sa.Column('user_agent', sa.Text(), nullable=True),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_sessions_expires_at'), 'sessions', ['expires_at'], unique=False)
+    op.create_index(op.f('ix_sessions_id'), 'sessions', ['id'], unique=False)
+    op.create_index(op.f('ix_sessions_session_id'), 'sessions', ['session_id'], unique=True)
+    op.create_index(op.f('ix_sessions_user_id'), 'sessions', ['user_id'], unique=False)
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=50), nullable=True),
     sa.Column('email', sa.String(length=100), nullable=True),
     sa.Column('hashed_password', sa.String(length=100), nullable=True),
+    sa.Column('server_credits', sa.Float(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -58,6 +75,11 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
+    op.drop_index(op.f('ix_sessions_user_id'), table_name='sessions')
+    op.drop_index(op.f('ix_sessions_session_id'), table_name='sessions')
+    op.drop_index(op.f('ix_sessions_id'), table_name='sessions')
+    op.drop_index(op.f('ix_sessions_expires_at'), table_name='sessions')
+    op.drop_table('sessions')
     op.drop_index(op.f('ix_diet_records_user_id'), table_name='diet_records')
     op.drop_index(op.f('ix_diet_records_id'), table_name='diet_records')
     op.drop_table('diet_records')

@@ -1,9 +1,9 @@
 import { Button, Card, Select, Space, Typography, Avatar, Input, Divider, message, Form, Modal } from 'antd'
-import { UserOutlined, LogoutOutlined, EditOutlined, HistoryOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
-import { logout, isLogin } from '../utils/auth'
-import { useState } from 'react'
+import { logout, getUserInfo } from '../utils/auth'
+import { useState, useEffect } from 'react'
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -14,6 +14,11 @@ function AppConfig() {
   const [testLoading, setTestLoading] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
   const [testResult, setTestResult] = useState<{status: string, message: string, response?: string} | null>(null);
+
+  // 登录状态管理
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState<{user_id: string, username: string, is_logged_in: boolean, server_credits: number} | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   // AI配置状态 - 从localStorage加载或使用默认值
   const [aiConfig, setAiConfig] = useState(() => {
@@ -34,49 +39,102 @@ function AppConfig() {
     };
   });
 
-  // 检查登录状态
-  const isLoggedIn = isLogin();
+  // 在组件挂载时检查登录状态
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const userData = await getUserInfo();
+        if (userData && userData.is_logged_in) {
+          setIsLoggedIn(true);
+          setUserInfo(userData);
+        } else {
+          setIsLoggedIn(false);
+          setUserInfo(null);
+        }
+      } catch (error) {
+        console.error('检查登录状态失败:', error);
+        setIsLoggedIn(false);
+        setUserInfo(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    };
 
-  // 模拟用户数据
-  const userInfo = {
-    name: '用户',
-    email: 'user@example.com',
+    checkLoginStatus();
+  }, []);
+
+  // 模拟用户数据（用于UI展示）
+  const displayUserInfo = {
+    name: userInfo?.username || '用户',
+    email: `${userInfo?.username || 'user'}@example.com`,
     avatar: null,
     joinDate: '2024-01-15',
     totalAnalyses: 156,
-    lastLogin: '2024-10-23'
+    lastLogin: '2024-10-23',
+    serverCredits: userInfo?.server_credits || 0
   };
 
-  const handleLogout = () => {
-    // 使用auth工具的logout函数清除登录状态
-    logout();
-    // 显示退出成功提示
-    message.success('已退出登录');
-    // 强制重新渲染组件
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsLoggedIn(false);
+      setUserInfo(null);
+      
+      // 清除localStorage中保存的session_id
+      localStorage.removeItem('session_id');
+      console.log('Session ID已从localStorage中清除');
+      
+      message.success('已退出登录');
+    } catch (error) {
+      console.error('登出失败:', error);
+      message.error('登出失败，请重试');
+    }
   };
 
-  const handleLogin = (values: { username?: string; password?: string }) => {
+  const handleLogin = async (values: { username?: string; password?: string }) => {
     setLoginLoading(true);
-    // 简单模拟登录，实际可替换为接口请求
-    setTimeout(() => {
-      setLoginLoading(false);
+    try {
       const username = values.username ? String(values.username).trim() : '';
       const password = values.password ? String(values.password).trim() : '';
-      
-      // 模拟登录验证：用户名和密码都必须是 "test"
-      if (username === 'test' && password === 'test') {
-        // 登录成功：写入登录标记和用户 id
-        const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString(); // 7 天过期
-        document.cookie = `isLogin=true; path=/; expires=${expires}`;
-        document.cookie = `userId=${encodeURIComponent(username)}; path=/; expires=${expires}`;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 包含cookies
+        body: JSON.stringify({
+          username: username,
+          password: password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
         message.success('登录成功');
-        // 强制重新渲染组件
-        window.location.reload();
+        
+        // 保存session_id到localStorage，以便后续API调用使用
+        if (result.session_id) {
+          localStorage.setItem('session_id', result.session_id);
+          console.log('Session ID已保存到localStorage');
+        }
+        
+        // 重新检查登录状态
+        const userData = await getUserInfo();
+        if (userData && userData.is_logged_in) {
+          setIsLoggedIn(true);
+          setUserInfo(userData);
+        }
       } else {
-        message.error('用户名或密码错误');
+        message.error(result.message || '登录失败');
       }
-    }, 800);
+    } catch (error) {
+      console.error('登录失败:', error);
+      message.error('登录失败，请检查网络连接');
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
   const handleAiConfigChange = (field: string, value: string) => {
@@ -96,6 +154,18 @@ function AppConfig() {
       console.error('保存AI配置失败:', error);
       message.error('保存AI配置失败');
     }
+  };
+
+  const handleResetAiConfig = () => {
+    const defaultConfig = {
+      modelUrl: 'https://aistudio.baidu.com/llm/lmapi/v3',
+      modelName: 'ERNIE-4.5-VL-28B-A3B',
+      apiKey: '',
+      preference: 'server'
+    };
+    setAiConfig(defaultConfig);
+    message.success('AI配置已重置');
+    console.log('重置AI配置:', defaultConfig);
   };
 
   const handleTestConnection = async () => {
@@ -149,7 +219,41 @@ function AppConfig() {
 
       <div style={{ padding: '0 16px' }}>
         {/* 根据登录状态显示不同内容 */}
-        {isLoggedIn ? (
+        {authLoading ? (
+          /* 加载状态 */
+          <Card
+            style={{
+              borderRadius: '20px',
+              border: 'none',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+              marginBottom: '16px'
+            }}
+            bodyStyle={{ padding: '24px' }}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '40px 0'
+            }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #1890ff, #36cfc9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <UserOutlined style={{ fontSize: '16px', color: 'white' }} />
+              </div>
+              <Text style={{ fontSize: '16px', color: '#8c8c8c' }}>
+                正在检查登录状态...
+              </Text>
+            </div>
+          </Card>
+        ) : isLoggedIn ? (
           /* 已登录状态：显示用户信息卡片 */
           <Card
             style={{
@@ -175,84 +279,40 @@ function AppConfig() {
                 }}
               />
               <div style={{ flex: 1 }}>
-                <Title level={4} style={{ margin: 0, marginBottom: '4px', fontSize: '18px', fontWeight: '600' }}>
-                  {userInfo.name}
+                <Title level={4} style={{ margin: 0, marginBottom: '8px', fontSize: '18px', fontWeight: '600' }}>
+                  {displayUserInfo.name}
                 </Title>
-                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>
-                  {userInfo.email}
-                </Text>
-                <br />
                 <Text style={{ fontSize: '12px', color: '#bfbfbf' }}>
-                  加入时间: {userInfo.joinDate}
+                  加入时间: {displayUserInfo.joinDate}
                 </Text>
               </div>
             </div>
 
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '16px',
-              marginBottom: '20px'
-            }}>
-              <div style={{
-                background: 'linear-gradient(135deg, #f0f9ff, #e6f7ff)',
+            <Card
+              style={{
                 borderRadius: '12px',
-                padding: '16px',
-                textAlign: 'center'
-              }}>
-                <Text style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#1890ff',
-                  display: 'block'
-                }}>
-                  {userInfo.totalAnalyses}
-                </Text>
-                <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>总分析次数</Text>
-              </div>
+                border: '1px solid #f0f0f0',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
+              }}
+              bodyStyle={{ padding: '16px' }}
+            >
               <div style={{
-                background: 'linear-gradient(135deg, #f6ffed, #f0f9ff)',
-                borderRadius: '12px',
-                padding: '16px',
-                textAlign: 'center'
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
+                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>服务器调用点</Text>
                 <Text style={{
-                  fontSize: '24px',
+                  fontSize: '18px',
                   fontWeight: '700',
-                  color: '#52c41a',
-                  display: 'block'
+                  color: '#fa8c16'
                 }}>
-                  {userInfo.lastLogin}
+                  {displayUserInfo.serverCredits.toFixed(1)}
                 </Text>
-                <Text style={{ fontSize: '12px', color: '#8c8c8c' }}>最后登录</Text>
               </div>
-            </div>
+            </Card>
 
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
-              <Button
-                type="default"
-                icon={<EditOutlined />}
-                block
-                style={{
-                  borderRadius: '12px',
-                  height: '44px',
-                  border: '1px solid #d9d9d9'
-                }}
-              >
-                编辑个人资料
-              </Button>
-              <Button
-                type="default"
-                icon={<HistoryOutlined />}
-                block
-                style={{
-                  borderRadius: '12px',
-                  height: '44px',
-                  border: '1px solid #d9d9d9'
-                }}
-              >
-                查看历史记录
-              </Button>
               <Button
                 type="primary"
                 danger
@@ -456,7 +516,7 @@ function AppConfig() {
             </Text>
           </div>
 
-          <Divider style={{ margin: '16px 0' }} />
+          {/* <Divider style={{ margin: '16px 0' }} /> */}
 
           {/* 操作按钮区域 */}
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
@@ -470,29 +530,48 @@ function AppConfig() {
                 height: '44px',
                 fontSize: '16px',
                 fontWeight: '600',
-                border: '1px solid #1890ff'
+                border: '2px solid #1890ff',
+                color: '#1890ff'
               }}
               onClick={handleTestConnection}
             >
               测试自定义模型连通性
             </Button>
             
-            <Button
-              type="primary"
-              block
-              size="large"
-              style={{
-                borderRadius: '12px',
-                height: '44px',
-                fontSize: '16px',
-                fontWeight: '600',
-                background: 'linear-gradient(135deg, #722ed1, #9c27b0)',
-                border: 'none'
-              }}
-              onClick={handleSaveAiConfig}
-            >
-              保存AI配置
-            </Button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <Button
+                block
+                size="large"
+                style={{
+                  borderRadius: '12px',
+                  height: '44px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  border: '2px solid #ff7875',
+                  color: '#ff7875',
+                  background: 'transparent'
+                }}
+                onClick={handleResetAiConfig}
+              >
+                重置
+              </Button>
+              <Button
+                type="primary"
+                block
+                size="large"
+                style={{
+                  borderRadius: '12px',
+                  height: '44px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  background: 'linear-gradient(135deg, #722ed1, #9c27b0)',
+                  border: 'none'
+                }}
+                onClick={handleSaveAiConfig}
+              >
+                保存AI配置
+              </Button>
+            </div>
           </Space>
         </Space>
           </>

@@ -12,6 +12,7 @@ import MobilePanel from './mobile-panel';
 import AppConfig from './AppConfig';
 import AppIntroduction from './AppIntroduction';
 import AppGallery from './AppGallery';
+import Debug from './Debug';
 import { isLogin } from '../utils/auth';
 
 function RequireAuth({ children }: { children: React.ReactElement }) {
@@ -27,6 +28,7 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/debug" element={<Debug />} />
         {/* 桌面端路由 */}
         <Route path="/" element={<RequireAuth><Index /></RequireAuth>} />
         <Route path="/analyse" element={<RequireAuth><Analyse /></RequireAuth>} />

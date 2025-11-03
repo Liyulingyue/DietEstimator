@@ -7,28 +7,55 @@ export default function Login() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
-  const onFinish = (values: { username?: string; password?: string }) => {
-    // 调试输出，方便在控制台查看实际提交的数据
-    // console.log('login onFinish values:', values);
+  const onFinish = async (values: { username?: string; password?: string }) => {
     setLoading(true);
-    // 简单模拟登录，实际可替换为接口请求
-    setTimeout(() => {
-      setLoading(false);
+    try {
       const username = values.username ? String(values.username).trim() : '';
       const password = values.password ? String(values.password).trim() : '';
       
-      // 模拟登录验证：用户名和密码都必须是 "test"
-      if (username === 'test' && password === 'test') {
-        // 登录成功：写入登录标记和用户 id（这里用 username 作为示例 userId）
-        const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString(); // 7 天过期
-        document.cookie = `isLogin=true; path=/; expires=${expires}`;
-        document.cookie = `userId=${encodeURIComponent(username)}; path=/; expires=${expires}`;
+      console.log('DEBUG login - 调用后端登录API:', {
+        url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/login`,
+        username,
+        password
+      });
+
+      // 调用后端登录API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 包含cookies
+        body: JSON.stringify({
+          username: username,
+          password: password,
+        }),
+      });
+
+      console.log('DEBUG login - 后端响应状态:', response.status);
+      const result = await response.json();
+      console.log('DEBUG login - 后端响应数据:', result);
+
+      if (result.success) {
+        // 保存session_id到localStorage，以便后续API调用使用
+        if (result.session_id) {
+          localStorage.setItem('session_id', result.session_id);
+          console.log('✅ Session ID已保存到localStorage:', result.session_id);
+        } else {
+          console.warn('⚠️  后端响应中没有session_id字段');
+        }
+        
         message.success('登录成功');
         navigate('/');
       } else {
-        message.error('用户名或密码错误');
+        message.error(result.message || '登录失败');
       }
-    }, 800);
+    } catch (error) {
+      console.error('登录失败:', error);
+      message.error('登录失败，请检查网络连接');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,9 +66,7 @@ export default function Login() {
         style={{ width: 320, padding: 32, border: '1px solid #eee', borderRadius: 8, background: '#fff', margin: '0 auto' }}
         onFinish={onFinish}
         onFinishFailed={(errorInfo) => {
-          // 当表单校验失败时打印详细信息，方便定位为何未触发 onFinish
           console.log(errorInfo);
-          // 额外的用户提示（可选），保持与现有 message 交互一致
           message.error('表单校验失败，请检查输入');
         }}
       >

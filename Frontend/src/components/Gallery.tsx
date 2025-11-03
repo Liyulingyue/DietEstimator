@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Upload, Button, Modal, Image, message } from 'antd';
 import { UploadOutlined, CameraOutlined, DeleteOutlined, FireOutlined, PictureOutlined } from '@ant-design/icons';
+import { analyzeFood } from '../utils/api';
 
-export default function Gallery() {
+interface GalleryProps {
+  onAnalysisComplete?: (result: any) => void;
+}
+
+export default function Gallery({ onAnalysisComplete }: GalleryProps) {
   const [images, setImages] = useState<string[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -77,14 +83,35 @@ export default function Gallery() {
     message.info('🗑️ 图片已删除');
   };
 
-  const handleParseCalories = () => {
+  const handleParseCalories = async () => {
     if (images.length === 0) {
       message.warning('请先上传或拍摄食物图片');
       return;
     }
-    // TODO: 实现解析热量逻辑
-    message.loading('正在分析中...', 2);
-    console.log('解析热量');
+    
+    setAnalyzing(true);
+    const hide = message.loading('正在分析中...', 0);
+    
+    try {
+      // 调用分析API
+      const result = await analyzeFood(images, { method: 'pure_llm' });
+      
+      hide();
+      
+      if (result.success) {
+        message.success('✅ 分析完成！');
+        if (onAnalysisComplete) {
+          onAnalysisComplete(result);
+        }
+      } else {
+        message.error(`分析失败: ${result.message}`);
+      }
+    } catch (error) {
+      hide();
+      message.error(`分析过程中发生错误: ${error}`);
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
@@ -246,6 +273,8 @@ export default function Gallery() {
             icon={<FireOutlined />} 
             onClick={handleParseCalories}
             type="primary"
+            loading={analyzing}
+            disabled={analyzing}
             block
             style={{
               height: '48px',
@@ -257,7 +286,7 @@ export default function Gallery() {
               boxShadow: '0 2px 8px rgba(82, 196, 26, 0.3)'
             }}
           >
-            分析
+            {analyzing ? '分析中...' : '分析'}
           </Button>
         </div>
 

@@ -1,24 +1,90 @@
 // 检查是否已登录
-export function isLogin() {
-  return document.cookie.split(';').some(item => item.trim() === 'isLogin=true');
+export async function isLogin(): Promise<boolean> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
+      method: 'GET',
+      credentials: 'include', // 包含cookies
+    });
+    const data = await response.json();
+    return data.is_logged_in || false;
+  } catch (error) {
+    console.error('检查登录状态失败:', error);
+    return false;
+  }
 }
 
 // 退出登录
-export function logout() {
-  // 删除登录cookie
-  document.cookie = 'isLogin=true; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
+export async function logout(): Promise<void> {
+  try {
+    await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.error('登出失败:', error);
+  }
 }
 
 // 获取当前登录用户 id（如果存在）
-export function getUserId(): string | null {
-  const cookie = document.cookie || '';
-  const parts = cookie.split(';').map(p => p.trim());
-  const pair = parts.find(p => p.startsWith('userId='));
-  if (!pair) return null;
-  const value = pair.split('=').slice(1).join('=');
+export async function getUserId(): Promise<string | null> {
   try {
-    return decodeURIComponent(value);
-  } catch (e) {
-    return value || null;
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data.is_logged_in ? data.user_id : null;
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    return null;
+  }
+}
+
+// 获取当前用户信息
+export async function getUserInfo(): Promise<{user_id: string, username: string, is_logged_in: boolean, server_credits: number} | null> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    return null;
+  }
+}
+
+// 获取服务器调用点信息
+export async function getServerCredits(): Promise<{username: string, server_credits: number, created_at: string} | null> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/credits`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('获取服务器调用点信息失败:', error);
+    return null;
+  }
+}
+
+// 消耗服务器调用点
+export async function consumeCredits(credits: number): Promise<{success: boolean, message: string, remaining_credits: number} | null> {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/consume-credits`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ credits_to_consume: credits }),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('消耗服务器调用点失败:', error);
+    return null;
   }
 }

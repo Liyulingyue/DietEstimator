@@ -1,10 +1,180 @@
+import { useState } from 'react';
 import TabBar from '../components/TabBar';
 import Gallery from '../components/Gallery';
-import { Card, Typography } from 'antd';
+import { Card, Typography, Empty, Spin, Divider, Button } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
 export default function Analyse() {
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleAnalysisComplete = (result: any) => {
+    setLoading(true);
+    // 模拟处理时间
+    setTimeout(() => {
+      setAnalysisResult(result);
+      setLoading(false);
+    }, 500);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      // 显示复制成功的反馈
+    });
+  };
+
+  const renderAnalysisResult = () => {
+    if (!analysisResult || !analysisResult.result) {
+      return (
+        <Empty 
+          description="暂无分析结果"
+          style={{ marginTop: '40px' }}
+        />
+      );
+    }
+
+    const result = analysisResult.result;
+
+    // 根据不同类型的结果进行渲染
+    return (
+      <div style={{ marginTop: '16px' }}>
+        {/* 食物描述 */}
+        {result.food_description && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              📋 食物描述
+            </Title>
+            <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
+              {result.food_description}
+            </Text>
+          </div>
+        )}
+
+        {/* 热量信息 */}
+        {(result.calories || result.calorie_estimate) && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#d32f2f', marginBottom: '8px' }}>
+              🔥 热量估算
+            </Title>
+            <div style={{
+              background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              border: '1px solid #ffb74d',
+            }}>
+              <Text strong style={{ fontSize: '18px', color: '#e65100' }}>
+                {result.calories || result.calorie_estimate} kcal
+              </Text>
+            </div>
+          </div>
+        )}
+
+        {/* 营养成分 */}
+        {result.nutrition_info && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              📊 营养成分
+            </Title>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: '12px',
+            }}>
+              {Object.entries(result.nutrition_info).map(([key, value]: [string, any]) => (
+                <div 
+                  key={key}
+                  style={{
+                    background: '#e3f2fd',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #90caf9',
+                    textAlign: 'center',
+                  }}
+                >
+                  <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                    {key}
+                  </Text>
+                  <Text strong style={{ fontSize: '14px', color: '#1565c0' }}>
+                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 原始JSON数据 */}
+        {result.raw_response && (
+          <div style={{ marginTop: '20px' }}>
+            <Divider />
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              📄 原始数据
+            </Title>
+            <div style={{
+              background: '#f5f5f5',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid #e0e0e0',
+              maxHeight: '300px',
+              overflowY: 'auto',
+              position: 'relative',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              wordBreak: 'break-all',
+              whiteSpace: 'pre-wrap',
+            }}>
+              <Button
+                type="text"
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => copyToClipboard(result.raw_response)}
+                style={{ position: 'absolute', right: '8px', top: '8px' }}
+              >
+                复制
+              </Button>
+              {typeof result.raw_response === 'string' 
+                ? result.raw_response 
+                : JSON.stringify(result.raw_response, null, 2)}
+            </div>
+          </div>
+        )}
+
+        {/* 完整JSON响应 */}
+        <div style={{ marginTop: '20px' }}>
+          <Divider />
+          <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+            🔍 完整响应
+          </Title>
+          <div style={{
+            background: '#f5f5f5',
+            padding: '12px',
+            borderRadius: '8px',
+            border: '1px solid #e0e0e0',
+            maxHeight: '300px',
+            overflowY: 'auto',
+            position: 'relative',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            wordBreak: 'break-all',
+            whiteSpace: 'pre-wrap',
+          }}>
+            <Button
+              type="text"
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={() => copyToClipboard(JSON.stringify(analysisResult, null, 2))}
+              style={{ position: 'absolute', right: '8px', top: '8px' }}
+            >
+              复制
+            </Button>
+            {JSON.stringify(analysisResult, null, 2)}
+          </div>
+        </div>
+      </div>
+    );
+  };
   return (
     <div style={{ 
       width: '100vw',
@@ -19,10 +189,10 @@ export default function Analyse() {
         display: 'flex',
         flexDirection: 'column',
         gap: '20px',
-        paddingTop: '80px' // 增加顶部距离，避免被TabBar遮挡
+        paddingTop: '80px'
       }}>
         <TabBar />
-        <Gallery />
+        <Gallery onAnalysisComplete={handleAnalysisComplete} />
         
         {/* 分析结果展示块 */}
         <Card style={{
@@ -40,9 +210,17 @@ export default function Analyse() {
             minHeight: '120px',
             border: '1px solid rgba(33, 150, 243, 0.2)'
           }}>
-            <Text style={{ color: '#424242', fontSize: '14px' }}>
-              暂无分析结果，请先上传图片进行分析。
-            </Text>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Spin tip="处理中..." />
+              </div>
+            ) : analysisResult ? (
+              renderAnalysisResult()
+            ) : (
+              <Text style={{ color: '#424242', fontSize: '14px' }}>
+                暂无分析结果，请先上传图片进行分析。
+              </Text>
+            )}
           </div>
         </Card>
       </div>
