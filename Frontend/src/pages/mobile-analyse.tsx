@@ -1,4 +1,4 @@
-import { Card, Typography, Spin, Empty } from 'antd';
+import { Card, Typography, Spin, Empty, message } from 'antd';
 import Gallery from '../components/Gallery';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
@@ -9,7 +9,38 @@ const { Title, Text, Paragraph } = Typography;
 
 export default function MobileAnalyse() {
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
+
+  const handleAnalysisStart = () => {
+    setAnalyzing(true);
+  };
+
+  const handleAnalysisComplete = (analysisResult: any) => {
+    console.log('分析完成，结果:', analysisResult);
+    
+    if (analysisResult && analysisResult.success) {
+      // 显示成功弹窗
+      message.success({
+        content: '🎉 分析完成！',
+        duration: 3,
+        style: {
+          fontSize: '16px',
+          fontWeight: '600',
+        }
+      });
+      
+      // 设置分析结果
+      setResult(analysisResult);
+    } else {
+      // 显示失败弹窗
+      message.error({
+        content: `分析失败: ${analysisResult?.message || '未知错误'}`,
+        duration: 4,
+      });
+    }
+    
+    setAnalyzing(false);
+  };
 
   return (
     <ResponsiveLayout>
@@ -29,7 +60,10 @@ export default function MobileAnalyse() {
 
       <div style={{ padding: '0 16px' }}>
         {/* 图片上传区域 */}
-        <Gallery />
+        <Gallery 
+          onAnalysisComplete={handleAnalysisComplete}
+          onAnalysisStart={handleAnalysisStart}
+        />
 
         {/* 分析结果区域 */}
         <Card style={{
@@ -93,37 +127,125 @@ export default function MobileAnalyse() {
                   正在分析中，请稍候...
                 </Paragraph>
               </div>
-            ) : result ? (
+            ) : result && result.result ? (
               <div style={{ width: '100%' }}>
-                <div style={{
-                  background: 'linear-gradient(135deg, #52c41a10, #73d13d05)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  marginBottom: '12px',
-                  borderLeft: '4px solid #52c41a'
-                }}>
-                  <Text strong style={{ fontSize: '16px', color: '#262626' }}>
-                    总热量: 
-                  </Text>
-                  <Text style={{ 
-                    fontSize: '28px', 
-                    fontWeight: '700',
-                    color: '#52c41a',
-                    marginLeft: '8px'
+                {/* 检查 result.result 是字符串还是对象 */}
+                {typeof result.result.result === 'string' ? (
+                  // 如果是字符串，直接显示文本内容
+                  <div style={{ 
+                    background: 'white',
+                    padding: '20px',
+                    borderRadius: '12px',
+                    border: '1px solid #f0f0f0',
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: '1.8'
                   }}>
-                    850
-                  </Text>
-                  <Text style={{ fontSize: '16px', color: '#8c8c8c' }}> kcal</Text>
-                </div>
+                    <Text style={{ 
+                      color: '#262626',
+                      fontSize: '15px',
+                    }}>
+                      {result.result.result}
+                    </Text>
+                  </div>
+                ) : (
+                  // 如果是对象，按原来的方式显示
+                  <>
+                    {/* 热量估算 */}
+                    {(result.result.calories || result.result.calorie_estimate) && (
+                      <div style={{
+                        background: 'linear-gradient(135deg, #52c41a10, #73d13d05)',
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '12px',
+                        borderLeft: '4px solid #52c41a'
+                      }}>
+                        <Text strong style={{ fontSize: '16px', color: '#262626' }}>
+                          总热量: 
+                        </Text>
+                        <Text style={{ 
+                          fontSize: '28px', 
+                          fontWeight: '700',
+                          color: '#52c41a',
+                          marginLeft: '8px'
+                        }}>
+                          {result.result.calories || result.result.calorie_estimate}
+                        </Text>
+                        <Text style={{ fontSize: '16px', color: '#8c8c8c' }}> kcal</Text>
+                      </div>
+                    )}
 
-                <Paragraph style={{ 
-                  color: '#595959',
-                  fontSize: '14px',
-                  lineHeight: '1.8',
-                  margin: 0
-                }}>
-                  {result}
-                </Paragraph>
+                    {/* 食物描述 */}
+                    {result.result.food_description && (
+                      <div style={{ 
+                        background: 'white',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        marginBottom: '12px',
+                        border: '1px solid #f0f0f0'
+                      }}>
+                        <Text strong style={{ 
+                          fontSize: '14px', 
+                          color: '#262626',
+                          display: 'block',
+                          marginBottom: '8px'
+                        }}>
+                          📋 食物描述
+                        </Text>
+                        <Paragraph style={{ 
+                          color: '#595959',
+                          fontSize: '14px',
+                          lineHeight: '1.8',
+                          margin: 0
+                        }}>
+                          {result.result.food_description}
+                        </Paragraph>
+                      </div>
+                    )}
+
+                    {/* 营养成分 */}
+                    {result.result.nutrition_info && (
+                      <div style={{ 
+                        background: 'white',
+                        padding: '16px',
+                        borderRadius: '12px',
+                        border: '1px solid #f0f0f0'
+                      }}>
+                        <Text strong style={{ 
+                          fontSize: '14px', 
+                          color: '#262626',
+                          display: 'block',
+                          marginBottom: '12px'
+                        }}>
+                          📊 营养成分
+                        </Text>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: '8px',
+                        }}>
+                          {Object.entries(result.result.nutrition_info).map(([key, value]: [string, any]) => (
+                            <div 
+                              key={key}
+                              style={{
+                                background: '#fafafa',
+                                padding: '10px',
+                                borderRadius: '8px',
+                                textAlign: 'center',
+                              }}
+                            >
+                              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
+                                {key}
+                              </Text>
+                              <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
+                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                              </Text>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             ) : (
               <Empty 

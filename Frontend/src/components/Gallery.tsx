@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Upload, Button, Modal, Image, message } from 'antd';
 import { UploadOutlined, CameraOutlined, DeleteOutlined, FireOutlined, PictureOutlined } from '@ant-design/icons';
 import { analyzeFood } from '../utils/api';
+import type { AIConfig } from '../utils/api';
 
 interface GalleryProps {
   onAnalysisComplete?: (result: any) => void;
+  onAnalysisStart?: () => void;
 }
 
-export default function Gallery({ onAnalysisComplete }: GalleryProps) {
+export default function Gallery({ onAnalysisComplete, onAnalysisStart }: GalleryProps) {
   const [images, setImages] = useState<string[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -90,25 +92,65 @@ export default function Gallery({ onAnalysisComplete }: GalleryProps) {
     }
     
     setAnalyzing(true);
+    // 通知父组件分析开始
+    if (onAnalysisStart) {
+      onAnalysisStart();
+    }
+    
     const hide = message.loading('正在分析中...', 0);
     
     try {
-      // 调用分析API
-      const result = await analyzeFood(images, { method: 'pure_llm' });
+      // 获取AI配置
+      const savedConfig = localStorage.getItem('aiConfig');
+      let aiConfig: AIConfig = { method: 'pure_llm' };
       
+      if (savedConfig) {
+        try {
+          const parsedConfig = JSON.parse(savedConfig);
+          aiConfig = {
+            modelUrl: parsedConfig.modelUrl,
+            modelName: parsedConfig.modelName,
+            apiKey: parsedConfig.apiKey,
+            preference: parsedConfig.preference,
+            method: 'pure_llm'
+          };
+        } catch (e) {
+          console.warn('Failed to parse saved AI config:', e);
+        }
+      }
+
+      // 调用分析API
+      console.log('Gallery: 开始分析，图片数量:', images.length);
+      console.log('Gallery: AI配置:', aiConfig);
+      const result = await analyzeFood(images, aiConfig);
+      
+      console.log('Gallery: API 返回结果:', result);
       hide();
       
       if (result.success) {
-        message.success('✅ 分析完成！');
         if (onAnalysisComplete) {
+          // 添加更详细的日志
+          console.log('Gallery: 调用 onAnalysisComplete 回调，数据:', {
+            success: result.success,
+            hasResult: !!result.result,
+            resultKeys: result.result ? Object.keys(result.result) : [],
+            calories: result.result?.calories,
+            hasDescription: !!result.result?.food_description,
+            hasNutrition: !!result.result?.nutrition_info
+          });
           onAnalysisComplete(result);
+          message.success('✅ 分析完成！');
+        } else {
+          console.warn('Gallery: onAnalysisComplete 回调未定义');
         }
       } else {
         message.error(`分析失败: ${result.message}`);
+        console.error('Gallery: 分析失败:', result);
       }
     } catch (error) {
       hide();
       message.error(`分析过程中发生错误: ${error}`);
+      console.error('Gallery: 分析异常:', error);
     } finally {
       setAnalyzing(false);
     }

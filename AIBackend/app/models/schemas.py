@@ -17,6 +17,9 @@ class EstimateRequest(BaseModel):
     """热量估算请求模型"""
     api_key: str = Field(..., description="百度文心一言API密钥")
     method: AnalysisMethod = Field(..., description="分析方法")
+    model_url: str = Field(..., description="模型API地址")
+    model_name: str = Field(..., description="模型名称")
+    call_preference: str = Field("server", description="调用偏好")
     
     class Config:
         json_encoders = {
@@ -54,3 +57,18 @@ class CalorieInfo(BaseModel):
     calories: Optional[str] = Field(None, description="热量值")
     basis: Optional[str] = Field(None, description="估算依据")
     food_name: Optional[str] = Field(None, description="食物名称")
+
+
+class TestConnectionRequest(BaseModel):
+    """测试连接请求模型"""
+    model_url: str = Field(..., description="模型API地址")
+    model_name: str = Field(..., description="模型名称")
+    api_key: str = Field(..., description="API密钥")
+    call_preference: str = Field("server", description="调用偏好")
+
+
+class TestConnectionResponse(BaseModel):
+    """测试连接响应模型"""
+    status: str = Field(..., description="测试状态")
+    message: str = Field(..., description="响应消息")
+    response: Optional[str] = Field(None, description="AI回复内容")

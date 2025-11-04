@@ -57,7 +57,7 @@ class LLMService:
             print(f"[LLMService] JSON parse error: {e}, response: {response}")
             return {}
     
-    def get_openai_response(self, messages: List[Dict], model: str, image_path: Optional[str] = None, api_key: str = None) -> str:
+    def get_openai_response(self, messages: List[Dict], model: str, image_path: Optional[str] = None, api_key: str = None, model_url: str = None) -> str:
         """
         调用OpenAI兼容的API获取响应
         
@@ -73,7 +73,7 @@ class LLMService:
         try:
             client = openai.OpenAI(
                 api_key=api_key,
-                base_url=OPENAI_API_URL
+                base_url=model_url or OPENAI_API_URL
             )
             
             if image_path:
@@ -93,7 +93,7 @@ class LLMService:
             print(f"[LLMService] API request failed: {e}")
             return "API请求失败"
     
-    def get_openai_response_from_bytes(self, messages: List[Dict], model: str, image_bytes: bytes, api_key: str = None) -> str:
+    def get_openai_response_from_bytes(self, messages: List[Dict], model: str, image_bytes: bytes, api_key: str = None, model_url: str = None) -> str:
         """
         从图片字节流调用API获取响应
         
@@ -111,7 +111,7 @@ class LLMService:
                 temp_file.write(image_bytes)
                 temp_file.flush()
                 
-                result = self.get_openai_response(messages, model, temp_file.name, api_key)
+                result = self.get_openai_response(messages, model, temp_file.name, api_key, model_url)
                 
                 # 清理临时文件
                 os.unlink(temp_file.name)
@@ -121,7 +121,7 @@ class LLMService:
             print(f"[LLMService] Image bytes processing failed: {e}")
             return "图片处理失败"
     
-    def check_nutrition_table(self, image_path: str, api_key: str) -> bool:
+    def check_nutrition_table(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> bool:
         """
         检查图片中是否包含营养成分表
         
@@ -144,7 +144,7 @@ class LLMService:
             """
             
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.vision_model, image_path, api_key)
+            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -154,7 +154,7 @@ class LLMService:
             print(f"[LLMService] Check nutrition table failed: {e}")
             return False
     
-    def check_food_portion(self, image_path: str, api_key: str) -> Dict:
+    def check_food_portion(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
         """
         检查图片中是否包含食物份量信息
         
@@ -168,7 +168,7 @@ class LLMService:
         try:
             prompt = get_prompt_portion_check()
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.vision_model, image_path, api_key)
+            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -181,7 +181,7 @@ class LLMService:
             print(f"[LLMService] Check food portion failed: {e}")
             return {"是否包含份量信息": False, "份量类型": "未知"}
     
-    def analyze_nutrition_info(self, image_path: str, ocr_text: str, api_key: str) -> Dict:
+    def analyze_nutrition_info(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
         """
         分析营养成分信息
         
@@ -196,7 +196,7 @@ class LLMService:
         try:
             prompt = get_prompt_nutrition_analysis(ocr_text)
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.text_model, None, api_key)
+            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -210,7 +210,7 @@ class LLMService:
             print(f"[LLMService] Analyze nutrition info failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def analyze_food_portion(self, image_path: str, ocr_text: str, api_key: str) -> Dict:
+    def analyze_food_portion(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
         """
         分析食物份量信息
         
@@ -225,7 +225,7 @@ class LLMService:
         try:
             prompt = get_prompt_portion_analysis(ocr_text)
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.text_model, None, api_key)
+            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -239,7 +239,7 @@ class LLMService:
             print(f"[LLMService] Analyze food portion failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def analyze_single_image_calories(self, image_path: str, api_key: str) -> Dict:
+    def analyze_single_image_calories(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
         """
         分析单张图片的热量
         
@@ -253,7 +253,7 @@ class LLMService:
         try:
             prompt = get_prompt_single_image_analysis()
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.vision_model, image_path, api_key)
+            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -267,7 +267,7 @@ class LLMService:
             print(f"[LLMService] Analyze single image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def summarize_multi_image_calories(self, single_results: List[tuple], api_key: str) -> Dict:
+    def summarize_multi_image_calories(self, single_results: List[tuple], api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
         """
         综合多张图片的热量分析
         
@@ -281,7 +281,7 @@ class LLMService:
         try:
             prompt = get_prompt_multi_image_analysis(single_results)
             messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, self.text_model, None, api_key)
+            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
             
             # 解析JSON响应
             result = self._safe_json_parse(response)
@@ -295,7 +295,7 @@ class LLMService:
             print(f"[LLMService] Summarize multi image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
 
-    def test_ai_connection(self, model_url: str, model_name: str, api_key: str) -> Dict:
+    def test_ai_connection(self, model_url: str, model_name: str, api_key: str, call_preference: str = "server") -> Dict:
         """
         测试AI连接连通性
         
@@ -303,6 +303,7 @@ class LLMService:
             model_url: 模型API地址
             model_name: 模型名称
             api_key: API密钥
+            call_preference: 调用偏好（暂时未使用）
             
         Returns:
             测试结果

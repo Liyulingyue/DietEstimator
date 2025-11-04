@@ -176,12 +176,12 @@ function AppConfig() {
 
     setTestLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/test-connection`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/ai/test-connection`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
+        body: JSON.stringify({
           model_url: aiConfig.modelUrl,
           model_name: aiConfig.modelName,
           api_key: aiConfig.apiKey,
@@ -189,7 +189,15 @@ function AppConfig() {
       });
 
       const result = await response.json();
-      setTestResult(result);
+      
+      // 适配新的后端响应格式
+      const adaptedResult = {
+        status: result.success ? 'success' : 'error',
+        response: result.response || undefined,
+        message: result.error || result.message
+      };
+      
+      setTestResult(adaptedResult);
       setTestModalVisible(true);
     } catch (error) {
       console.error('测试连接失败:', error);

@@ -6,10 +6,11 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
  * AI分析配置接口
  */
 export interface AIConfig {
-  model_url?: string;
-  model_name?: string;
-  api_key?: string;
+  modelUrl?: string;
+  modelName?: string;
+  apiKey?: string;
   method?: string; // 分析方法: pure_llm, llm_ocr_hybrid, nutrition_table, food_portion
+  preference?: string; // 调用偏好，默认为server
 }
 
 /**
@@ -19,6 +20,8 @@ export interface AnalysisResult {
   success: boolean;
   message: string;
   result?: any;
+  session_id?: string;
+  method?: string;
   error?: string;
 }
 
@@ -130,6 +133,22 @@ export async function analyzeFood(
       formData.append('method', aiConfig.method);
     } else {
       formData.append('method', 'pure_llm'); // 默认方法
+    }
+    
+    // 添加AI配置信息
+    if (aiConfig?.modelUrl) {
+      formData.append('model_url', aiConfig.modelUrl);
+    }
+    if (aiConfig?.modelName) {
+      formData.append('model_name', aiConfig.modelName);
+    }
+    if (aiConfig?.apiKey) {
+      formData.append('api_key', aiConfig.apiKey);
+    }
+    if (aiConfig?.preference) {
+      formData.append('call_preference', aiConfig.preference);
+    } else {
+      formData.append('call_preference', 'server'); // 默认调用偏好
     }
 
     // 添加图片文件

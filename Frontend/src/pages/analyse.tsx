@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import TabBar from '../components/TabBar';
 import Gallery from '../components/Gallery';
-import { Card, Typography, Empty, Spin, Divider, Button } from 'antd';
+import { Card, Typography, Empty, Spin, Divider, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -10,13 +10,38 @@ export default function Analyse() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleAnalysisComplete = (result: any) => {
+  const handleAnalysisStart = () => {
     setLoading(true);
-    // 模拟处理时间
-    setTimeout(() => {
-      setAnalysisResult(result);
+  };
+
+  const handleAnalysisComplete = (result: any) => {
+    console.log('分析完成，收到结果:', result);
+    
+    if (result && result.success) {
+      // 显示成功弹窗
+      message.success({
+        content: '🎉 分析完成！',
+        duration: 3,
+        style: {
+          fontSize: '16px',
+          fontWeight: '600',
+        }
+      });
+      
+      // 设置分析结果
+      setTimeout(() => {
+        setAnalysisResult(result);
+        setLoading(false);
+        console.log('分析结果已设置:', result);
+      }, 500);
+    } else {
+      // 显示失败弹窗
+      message.error({
+        content: `分析失败: ${result?.message || '未知错误'}`,
+        duration: 4,
+      });
       setLoading(false);
-    }, 500);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -192,7 +217,10 @@ export default function Analyse() {
         paddingTop: '80px'
       }}>
         <TabBar />
-        <Gallery onAnalysisComplete={handleAnalysisComplete} />
+        <Gallery 
+          onAnalysisComplete={handleAnalysisComplete}
+          onAnalysisStart={handleAnalysisStart}
+        />
         
         {/* 分析结果展示块 */}
         <Card style={{
