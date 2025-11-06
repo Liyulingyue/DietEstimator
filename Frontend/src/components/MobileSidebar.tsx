@@ -64,7 +64,7 @@ export default function MobileSidebar({ visible, onClose }: MobileSidebarProps) 
       label: '图片画廊',
       icon: PictureOutlined,
       color: '#eb2f96',
-      description: '历史记录'
+      description: '分享美食与卡路里'
     },
   ];
 
@@ -284,15 +284,21 @@ export default function MobileSidebar({ visible, onClose }: MobileSidebarProps) 
       open={visible}
       onClose={onClose}
       width={280}
-      bodyStyle={{
-        padding: '16px 0',
-        background: 'linear-gradient(180deg, #f0f5ff 0%, #f5f5f5 100%)'
-      }}
-      headerStyle={{
-        background: 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
-        color: 'white',
-        borderBottom: 'none',
-        padding: '16px 20px'
+      styles={{
+        body: {
+          padding: '16px 0',
+          background: 'linear-gradient(180deg, #f0f5ff 0%, #f5f5f5 100%)'
+        },
+        header: {
+          background: 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
+          color: 'white',
+          borderBottom: 'none',
+          padding: '16px 20px'
+        },
+        mask: {
+          background: 'rgba(0, 0, 0, 0.45)',
+          backdropFilter: 'blur(4px)'
+        }
       }}
       closeIcon={
         <CloseOutlined style={{
@@ -300,10 +306,6 @@ export default function MobileSidebar({ visible, onClose }: MobileSidebarProps) 
           fontSize: '16px'
         }} />
       }
-      maskStyle={{
-        background: 'rgba(0, 0, 0, 0.45)',
-        backdropFilter: 'blur(4px)'
-      }}
     >
       {/* 使用公共菜单渲染函数 */}
       {renderMenuContent()}

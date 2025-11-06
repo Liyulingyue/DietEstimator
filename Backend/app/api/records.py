@@ -9,7 +9,7 @@ from app.models.schemas import DietRecordResponse, DietRecordRequest
 router = APIRouter()
 
 
-@router.post("/records/add", response_model=DietRecordResponse)
+@router.post("/add", response_model=DietRecordResponse)
 async def add_user_record(
     user_id: str = Form(...),
     analysis_result: str = Form(...),
@@ -49,7 +49,7 @@ async def add_user_record(
         raise HTTPException(status_code=500, detail=f"创建记录失败: {str(e)}")
 
 
-@router.get("/records/{user_id}", response_model=List[DietRecordResponse])
+@router.get("/{user_id}", response_model=List[DietRecordResponse])
 async def get_user_records(
     user_id: str,
     page: int = -1,
@@ -86,7 +86,7 @@ async def get_user_records(
     return records
 
 
-@router.delete("/records/{user_id}/{record_id}")
+@router.delete("/{user_id}/{record_id}")
 async def delete_user_record(
     user_id: str,
     record_id: int,

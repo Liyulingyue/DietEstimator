@@ -8,10 +8,10 @@ from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.api.auth_middleware import require_auth, optional_auth
+from app.api.auth_middleware import require_auth, optional_auth, get_current_user
 from app.api.auth import UserInfo
-from app.models.models import DietRecord
-from app.models.schemas import TestConnectionRequest, TestConnectionResponse, AnalyzeRequest, AnalyzeResponse
+from app.models.models import DietRecord, User
+from app.models.schemas import AnalyzeRequest, AnalyzeResponse
 
 def validate_analyze_request(
     session_id: str = Form(...),
@@ -179,73 +179,6 @@ async def proxy_food_portion(
             raise HTTPException(status_code=resp.status_code, detail=data)
         return data
 
-@router.post("/test-connection", response_model=TestConnectionResponse)
-async def proxy_test_connection(
-    request: TestConnectionRequest,
-    current_user: Optional[UserInfo] = Depends(optional_auth),
-    db: Session = Depends(get_db)
-) -> TestConnectionResponse:
-    """将测试连接请求中转到 AI 后端"""
-    logger.debug(f"proxy_test_connection called with model_url={request.model_url}, model_name={request.model_name}, call_preference={request.call_preference}")
-    logger.debug(f"Current user: {current_user.username if current_user else 'Not logged in'}")
-
-    url = _backend_url('/api/v1/test-connection')
-    logger.debug(f"Forwarding to AI backend: url={url}")
-
-    # 准备表单数据
-    data = {
-        'model_url': request.model_url,
-        'model_name': request.model_name,
-        'api_key': request.api_key,
-        'call_preference': request.call_preference  # 调用偏好参数
-    }
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            resp = await client.post(
-                url, 
-                json=data,  # 发送 JSON 数据而不是 form data
-                headers={"Content-Type": "application/json"}
-            )
-            logger.debug(f"AI backend response status={resp.status_code}")
-        except Exception as e:
-            logger.exception('Error forwarding to AI backend (test-connection)')
-            return TestConnectionResponse(
-                success=False,
-                message="连接测试失败",
-                error=str(e)
-            )
-
-        try:
-            response_data = resp.json()
-            logger.info(f"AI backend test-connection response: {response_data}")
-        except Exception:
-            body = await resp.aread()
-            logger.error('Non-JSON response from AI backend (test-connection): %s', body)
-            return TestConnectionResponse(
-                success=False,
-                message="AI后端返回无效响应",
-                error="Non-JSON response"
-            )
-
-        if resp.status_code != 200:
-            logger.error('AI backend test-connection returned error: %s', response_data)
-            return TestConnectionResponse(
-                success=False,
-                message="连接测试失败",
-                error=str(response_data)
-            )
-
-        # 成功响应
-        # print(response_data)
-        return TestConnectionResponse(
-            success=True,
-            message="连接测试成功",
-            response=response_data.get("response"),
-            error=None
-        )
-
-
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_food(
     files: List[UploadFile] = File(...),
@@ -270,6 +203,38 @@ async def analyze_food(
         raise HTTPException(status_code=400, detail="未提供图片文件")
     
     try:
+        # 基于Session进行会话有效性判断
+        current_user = get_current_user(analyze_request.session_id)
+        
+        # 如果会话有效且用户有足够的服务调用点，则使用服务器配置
+        use_server_config = (
+            current_user is not None and 
+            current_user.is_logged_in and 
+            current_user.server_credits > 0 and
+            analyze_request.call_preference == "server"
+        )
+        
+        if analyze_request.call_preference == "server" and not use_server_config:
+            if current_user and current_user.is_logged_in:
+                logger.warning(f"用户 {current_user.username} 选择服务器模式但调用点不足 (剩余: {current_user.server_credits})，将使用自定义配置")
+            else:
+                logger.info("会话无效，将使用自定义配置")
+        
+        # 根据条件选择AI配置
+        if use_server_config:
+            model_url = settings.MODEL_URL
+            model_name = settings.MODEL_NAME
+            api_key = settings.MODEL_KEY
+            logger.info(f"用户 {current_user.username} 使用服务器配置 (剩余调用点: {current_user.server_credits})")
+        else:
+            model_url = analyze_request.model_url
+            model_name = analyze_request.model_name
+            api_key = analyze_request.api_key
+            if current_user and current_user.is_logged_in:
+                logger.info(f"用户 {current_user.username} 使用自定义配置")
+            else:
+                logger.info("使用自定义配置（会话无效）")
+        
         # 根据分析方法选择AI后端的对应接口
         ai_endpoint = {
             "pure_llm": "/api/v1/estimate/pure_llm",
@@ -281,7 +246,8 @@ async def analyze_food(
         # 转发到AI后端进行分析
         url = f"{settings.AI_BACKEND_URL.rstrip('/')}{ai_endpoint}"
         logger.info(f"Forwarding analysis request to AI backend: {url}")
-        logger.debug(f"AI config data: model_url={analyze_request.model_url}, model_name={analyze_request.model_name}, call_preference={analyze_request.call_preference}")
+        
+        logger.debug(f"AI config data: model_url={model_url}, model_name={model_name}")
         
         # 读取第一个文件进行分析
         file0 = files[0]
@@ -292,10 +258,10 @@ async def analyze_food(
             try:
                 # 准备AI配置数据
                 ai_config_data = {
-                    'model_url': analyze_request.model_url,
-                    'model_name': analyze_request.model_name,
-                    'api_key': analyze_request.api_key,
-                    'call_preference': analyze_request.call_preference
+                    'model_url': model_url,
+                    'model_name': model_name,
+                    'api_key': api_key,
+                    'method': analyze_request.method  # 添加缺失的method参数
                 }
                 
                 resp = await client.post(
@@ -320,23 +286,18 @@ async def analyze_food(
                 logger.error('AI backend returned error: %s', ai_result)
                 raise HTTPException(status_code=resp.status_code, detail=f"AI分析失败: {ai_result.get('message', '未知错误')}")
         
-        # 保存分析记录到数据库
-        try:
-            diet_record = DietRecord(
-                user_id=analyze_request.user_id,
-                image_url="",  # 暂不保存图片URL
-                analysis_method=analyze_request.method,
-                analysis_result=json.dumps(ai_result, ensure_ascii=False),
-                ai_analysis=json.dumps(ai_result, ensure_ascii=False),
-            )
-            db.add(diet_record)
-            db.commit()
-            db.refresh(diet_record)
-            logger.info(f"Diet record saved: id={diet_record.id}, user_id={analyze_request.user_id}")
-        except Exception as e:
-            logger.exception("Error saving diet record to database")
-            db.rollback()
-            # 不影响返回结果，继续返回AI的分析结果
+        # 分析成功，如果使用了服务器配置则扣除调用点
+        if use_server_config:
+            # 更新数据库中的调用点
+            user = db.query(User).filter(User.id == int(current_user.user_id)).first()
+            if user:
+                user.server_credits -= 1
+                db.commit()
+                logger.info(f"用户 {current_user.username} 消耗1个服务器调用点，剩余: {user.server_credits}")
+            else:
+                logger.error(f"扣除调用点时未找到用户 {current_user.user_id}")
+        
+        # 注意：这里不再自动保存分析记录，改为由前端主动调用记录接口
         
         return AnalyzeResponse(
             success=True,
@@ -352,4 +313,60 @@ async def analyze_food(
     except Exception as e:
         logger.exception("Unexpected error in analyze_food")
         raise HTTPException(status_code=500, detail=f"分析过程中发生错误: {str(e)}")
+
+
+class SaveRecordRequest(BaseModel):
+    analysis_result: dict
+    analysis_method: str = "pure_llm"
+    image_url: Optional[str] = ""
+
+
+@router.post("/save_record")
+async def save_analysis_record(
+    request: SaveRecordRequest,
+    current_user: Optional[UserInfo] = Depends(optional_auth),
+    db: Session = Depends(get_db),
+):
+    """
+    保存分析记录接口 - 由前端主动调用
+    
+    Args:
+        request: 保存记录请求
+        current_user: 当前用户信息（从cookies中获取）
+        db: 数据库会话
+        
+    Returns:
+        保存结果
+    """
+    logger.debug(f"save_analysis_record called with method={request.analysis_method}")
+    
+    try:
+        # 验证会话
+        if not current_user or not current_user.is_logged_in:
+            raise HTTPException(status_code=401, detail="会话无效，请先登录")
+        
+        # 保存分析记录到数据库
+        diet_record = DietRecord(
+            user_id=current_user.user_id,
+            image_url=request.image_url or "",
+            analysis_method=request.analysis_method,
+            analysis_result=json.dumps(request.analysis_result, ensure_ascii=False),
+        )
+        db.add(diet_record)
+        db.commit()
+        db.refresh(diet_record)
+        logger.info(f"Diet record saved: id={diet_record.id}, user_id={current_user.user_id}")
+        
+        return {
+            "success": True,
+            "message": "记录保存成功",
+            "record_id": diet_record.id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error saving analysis record")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"保存记录失败: {str(e)}")
 

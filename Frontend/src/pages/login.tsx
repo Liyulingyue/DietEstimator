@@ -14,13 +14,13 @@ export default function Login() {
       const password = values.password ? String(values.password).trim() : '';
       
       console.log('DEBUG login - 调用后端登录API:', {
-        url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/login`,
+        url: `${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`,
         username,
         password
       });
 
       // 调用后端登录API
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

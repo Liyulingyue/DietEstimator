@@ -1,5 +1,5 @@
 import { Card, Typography, Button, Progress, Tag } from 'antd';
-import { ExperimentOutlined, BulbOutlined, ApiOutlined, RocketOutlined, ThunderboltOutlined, StarOutlined } from '@ant-design/icons';
+import { ExperimentOutlined, BulbOutlined, ApiOutlined, ThunderboltOutlined, StarOutlined, ScanOutlined } from '@ant-design/icons';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { useState } from 'react';
@@ -23,6 +23,18 @@ export default function MobileLabs() {
       available: true
     },
     {
+      key: 'package-scan',
+      title: '包装袋营养成分与克重识别',
+      description: '智能识别食品包装袋上的营养成分表和克重信息，快速获取准确的营养数据。',
+      icon: ScanOutlined,
+      gradient: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
+      bgGradient: 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)',
+      color: '#52c41a',
+      tag: { text: 'Coming Soon', color: 'green' },
+      progress: 25,
+      available: false
+    },
+    {
       key: 'nutrition',
       title: '营养成分分析',
       description: '深度分析食物营养成分，提供蛋白质、脂肪、碳水化合物等详细的营养报告。',
@@ -42,20 +54,8 @@ export default function MobileLabs() {
       gradient: 'linear-gradient(135deg, #722ed1 0%, #9254de 100%)',
       bgGradient: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)',
       color: '#722ed1',
-      tag: { text: 'Coming Soon', color: 'purple' },
+      tag: { text: 'Planned', color: 'purple' },
       progress: 35,
-      available: false
-    },
-    {
-      key: 'ai-coach',
-      title: 'AI 健康教练',
-      description: '智能饮食顾问，实时解答您的饮食疑问，制定科学的饮食计划。',
-      icon: RocketOutlined,
-      gradient: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)',
-      bgGradient: 'linear-gradient(135deg, #fff0f6 0%, #ffd6e7 100%)',
-      color: '#eb2f96',
-      tag: { text: 'Planned', color: 'magenta' },
-      progress: 10,
       available: false
     },
   ];
@@ -137,7 +137,7 @@ export default function MobileLabs() {
                 onClick={() => handleCardClick(exp.key, exp.available)}
                 onTouchStart={() => exp.available && setPressedCard(exp.key)}
                 onTouchEnd={() => setTimeout(() => setPressedCard(null), 150)}
-                bodyStyle={{ padding: '24px' }}
+                styles={{ body: { padding: '24px' } }}
               >
                 {/* 背景装饰圆圈 */}
                 <div style={{
@@ -228,7 +228,7 @@ export default function MobileLabs() {
                           '100%': exp.color + 'aa'
                         }}
                         trailColor="rgba(255, 255, 255, 0.6)"
-                        strokeWidth={8}
+                        size={8}
                         showInfo={false}
                       />
                     </div>

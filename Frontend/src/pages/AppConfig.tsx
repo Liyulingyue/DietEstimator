@@ -1,5 +1,5 @@
-import { Button, Card, Select, Space, Typography, Avatar, Input, Divider, message, Form, Modal } from 'antd'
-import { UserOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined } from '@ant-design/icons'
+import { Button, Card, Select, Space, Typography, Avatar, Input, message, Form, Modal, InputNumber } from 'antd'
+import { UserOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined, FireOutlined } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
 import { logout, getUserInfo } from '../utils/auth'
@@ -37,6 +37,19 @@ function AppConfig() {
       apiKey: '',
       preference: 'server' // 'custom' 或 'server'
     };
+  });
+
+  // 饮食目标状态 - 从localStorage加载或使用默认值
+  const [dietGoal, setDietGoal] = useState(() => {
+    const savedGoal = localStorage.getItem('dietGoal');
+    if (savedGoal) {
+      try {
+        return parseInt(savedGoal);
+      } catch (e) {
+        console.error('Failed to parse saved diet goal:', e);
+      }
+    }
+    return 3000; // 默认值3000
   });
 
   // 在组件挂载时检查登录状态
@@ -97,7 +110,7 @@ function AppConfig() {
       const username = values.username ? String(values.username).trim() : '';
       const password = values.password ? String(values.password).trim() : '';
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,6 +169,28 @@ function AppConfig() {
     }
   };
 
+  const handleSaveDietGoal = () => {
+    try {
+      // 保存饮食目标到本地存储
+      localStorage.setItem('dietGoal', dietGoal.toString());
+      
+      // 触发自定义事件以通知其他组件更新
+      window.dispatchEvent(new Event('dietGoalChanged'));
+      
+      message.success('饮食目标已保存');
+      console.log('保存饮食目标:', dietGoal);
+    } catch (error) {
+      console.error('保存饮食目标失败:', error);
+      message.error('保存饮食目标失败');
+    }
+  };
+
+  const handleDietGoalChange = (value: number | null) => {
+    if (value !== null && value >= 0) {
+      setDietGoal(value);
+    }
+  };
+
   const handleResetAiConfig = () => {
     const defaultConfig = {
       modelUrl: 'https://aistudio.baidu.com/llm/lmapi/v3',
@@ -176,7 +211,7 @@ function AppConfig() {
 
     setTestLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/ai/test-connection`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/connection/test-connection`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -236,7 +271,7 @@ function AppConfig() {
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
               marginBottom: '16px'
             }}
-            bodyStyle={{ padding: '24px' }}
+            styles={{ body: { padding: '24px' } }}
           >
             <div style={{
               display: 'flex',
@@ -270,7 +305,7 @@ function AppConfig() {
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
               marginBottom: '16px'
             }}
-            bodyStyle={{ padding: '24px' }}
+            styles={{ body: { padding: '24px' } }}
           >
             <div style={{
               display: 'flex',
@@ -302,7 +337,7 @@ function AppConfig() {
                 border: '1px solid #f0f0f0',
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
               }}
-              bodyStyle={{ padding: '16px' }}
+              styles={{ body: { padding: '16px' } }}
             >
               <div style={{
                 display: 'flex',
@@ -347,7 +382,7 @@ function AppConfig() {
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
               marginBottom: '16px'
             }}
-            bodyStyle={{ padding: '24px' }}
+            styles={{ body: { padding: '24px' } }}
           >
             <div style={{
               display: 'flex',
@@ -405,6 +440,86 @@ function AppConfig() {
           </Card>
         )}
 
+        {/* 饮食目标配置 - 始终显示 */}
+        <Card
+          style={{
+            borderRadius: '20px',
+            border: 'none',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+            marginBottom: '16px'
+          }}
+          styles={{ body: { padding: '24px' } }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #ff7a45, #fa541c)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <FireOutlined style={{ fontSize: '20px', color: 'white' }} />
+            </div>
+            <Title level={4} style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
+              饮食目标
+            </Title>
+          </div>
+
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <div>
+              <Text style={{ fontSize: '14px', fontWeight: '500', display: 'block', marginBottom: '8px' }}>
+                每日热量目标（kcal）
+              </Text>
+              <InputNumber
+                min={0}
+                max={10000}
+                value={dietGoal}
+                onChange={handleDietGoalChange}
+                style={{ 
+                  width: '100%', 
+                  borderRadius: '8px',
+                  height: '40px'
+                }}
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(value) => value?.replace(/\$\s?|(,*)/g, '') as unknown as number}
+              />
+              <Text style={{
+                fontSize: '12px',
+                color: '#8c8c8c',
+                display: 'block',
+                marginTop: '4px',
+                fontStyle: 'italic'
+              }}>
+                💡 设置每日热量摄入目标，用于追踪饮食进度
+              </Text>
+            </div>
+
+            <Button
+              type="primary"
+              block
+              size="large"
+              style={{
+                borderRadius: '12px',
+                height: '44px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: 'linear-gradient(135deg, #ff7a45, #fa541c)',
+                border: 'none'
+              }}
+              onClick={handleSaveDietGoal}
+            >
+              保存饮食目标
+            </Button>
+          </Space>
+        </Card>
+
         {/* AI配置 - 始终显示 */}
         <Card
           style={{
@@ -413,7 +528,7 @@ function AppConfig() {
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             marginBottom: '16px'
           }}
-          bodyStyle={{ padding: '24px' }}
+          styles={{ body: { padding: '24px' } }}
         >
           <>
             <div style={{
@@ -701,10 +816,12 @@ function AppConfig() {
                         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
                         background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
                       }}
-                      bodyStyle={{
-                        padding: '20px',
-                        maxHeight: '300px',
-                        overflow: 'auto'
+                      styles={{
+                        body: {
+                          padding: '20px',
+                          maxHeight: '300px',
+                          overflow: 'auto'
+                        }
                       }}
                     >
                       <div style={{
@@ -744,8 +861,10 @@ function AppConfig() {
                         boxShadow: '0 2px 8px rgba(255, 0, 0, 0.08)',
                         background: 'linear-gradient(135deg, #fff2f0 0%, #fef2f1 100%)'
                       }}
-                      bodyStyle={{
-                        padding: '20px'
+                      styles={{
+                        body: {
+                          padding: '20px'
+                        }
                       }}
                     >
                       <div style={{

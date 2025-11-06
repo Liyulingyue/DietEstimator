@@ -121,7 +121,7 @@ class LLMService:
             print(f"[LLMService] Image bytes processing failed: {e}")
             return "图片处理失败"
     
-    def check_nutrition_table(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> bool:
+    def check_nutrition_table(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> bool:
         """
         检查图片中是否包含营养成分表
         
@@ -154,7 +154,7 @@ class LLMService:
             print(f"[LLMService] Check nutrition table failed: {e}")
             return False
     
-    def check_food_portion(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
+    def check_food_portion(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         检查图片中是否包含食物份量信息
         
@@ -181,7 +181,7 @@ class LLMService:
             print(f"[LLMService] Check food portion failed: {e}")
             return {"是否包含份量信息": False, "份量类型": "未知"}
     
-    def analyze_nutrition_info(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
+    def analyze_nutrition_info(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         分析营养成分信息
         
@@ -210,7 +210,7 @@ class LLMService:
             print(f"[LLMService] Analyze nutrition info failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def analyze_food_portion(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
+    def analyze_food_portion(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         分析食物份量信息
         
@@ -239,7 +239,7 @@ class LLMService:
             print(f"[LLMService] Analyze food portion failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def analyze_single_image_calories(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
+    def analyze_single_image_calories(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         分析单张图片的热量
         
@@ -259,7 +259,12 @@ class LLMService:
             result = self._safe_json_parse(response)
             
             if result and "热量" in result:
-                return {"状态": "成功", "热量": result["热量"], "估算依据": result.get("估算依据", "")}
+                return {
+                    "状态": "成功", 
+                    "食物名称": result.get("食物名称", "未知食物"),
+                    "热量": result["热量"], 
+                    "估算依据": result.get("估算依据", "")
+                }
             else:
                 return {"状态": "失败", "错误信息": "无法分析图片热量"}
                 
@@ -267,12 +272,12 @@ class LLMService:
             print(f"[LLMService] Analyze single image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
     
-    def summarize_multi_image_calories(self, single_results: List[tuple], api_key: str, model_url: str = None, model_name: str = None, call_preference: str = "server") -> Dict:
+    def summarize_multi_image_calories(self, single_results: List[tuple], api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         综合多张图片的热量分析
         
         Args:
-            single_results: 单张图片分析结果列表，格式为[(图片序号, 热量, 依据), ...]
+            single_results: 单张图片分析结果列表，格式为[(图片序号, 食物名称, 热量, 依据), ...]
             api_key: API密钥
             
         Returns:
@@ -295,7 +300,7 @@ class LLMService:
             print(f"[LLMService] Summarize multi image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
 
-    def test_ai_connection(self, model_url: str, model_name: str, api_key: str, call_preference: str = "server") -> Dict:
+    def test_ai_connection(self, model_url: str, model_name: str, api_key: str) -> Dict:
         """
         测试AI连接连通性
         
@@ -303,7 +308,6 @@ class LLMService:
             model_url: 模型API地址
             model_name: 模型名称
             api_key: API密钥
-            call_preference: 调用偏好（暂时未使用）
             
         Returns:
             测试结果

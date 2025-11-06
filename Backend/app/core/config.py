@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # AI后端配置
     AI_BACKEND_URL: str = "http://localhost:8001"  # AI后端服务地址
 
+    # AI模型配置
+    MODEL_URL: str
+    MODEL_KEY: str
+    MODEL_NAME: str
+
     SQLALCHEMY_DATABASE_URI: Optional[str] = None
 
     @property

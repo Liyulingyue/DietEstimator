@@ -28,7 +28,7 @@ export default function Debug() {
   const testBackendConnection = async () => {
     try {
       setApiTest({ loading: true, status: '测试中...' });
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -394,6 +394,7 @@ def get_prompt_nutrition_calculate(energy, net_content):
 def get_prompt_single_image_analysis():
     """生成单张图片热量分析的prompt"""
     example_dict = {
+        "食物名称": "str，识别出的食物名称",
         "热量": "str，估算的热量值",
         "估算依据": "str，详细的估算理由和分析过程"
     }
@@ -431,9 +432,18 @@ def get_prompt_multi_image_analysis(analysis_results):
     # 构建分析结果文本
     results_text = ""
     for i, result in enumerate(analysis_results, 1):
-        results_text += f"图片{i}分析结果：\n"
-        results_text += f"  热量：{result.get('热量', '未知')} 大卡\n"
-        results_text += f"  估算依据：{result.get('估算依据', '无')}\n\n"
+        # result格式: (图片序号, 食物名称, 热量, 依据)
+        if len(result) >= 4:
+            _, food_name, calories, reason = result
+            results_text += f"图片{i}分析结果：\n"
+            results_text += f"  食物名称：{food_name}\n"
+            results_text += f"  热量：{calories} 大卡\n"
+            results_text += f"  估算依据：{reason}\n\n"
+        else:
+            # 兼容旧格式
+            results_text += f"图片{i}分析结果：\n"
+            results_text += f"  热量：{result[1] if len(result) > 1 else '未知'} 大卡\n"
+            results_text += f"  估算依据：{result[2] if len(result) > 2 else '无'}\n\n"
     
     prompt = f"""
 请基于以下多张图片的分析结果，给出该食物的综合热量估算。

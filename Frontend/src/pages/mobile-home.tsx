@@ -44,7 +44,7 @@ export default function MobileHome() {
   const extraFeatures = [
     { icon: SettingOutlined, label: '用户管理与配置', path: '/app/config', color: '#1890ff' },
     { icon: InfoCircleOutlined, label: '使用说明', path: '/app/introduction', color: '#13c2c2' },
-    { icon: PictureOutlined, label: '图片画廊', path: '/app/gallery', color: '#eb2f96' },
+    { icon: PictureOutlined, label: '公共画廊', path: '/app/gallery', color: '#eb2f96' },
   ];
 
   const handleCardClick = (path: string, key: string) => {
@@ -97,7 +97,7 @@ export default function MobileHome() {
                 onClick={() => handleCardClick(feature.path, feature.key)}
                 onTouchStart={() => setPressedCard(feature.key)}
                 onTouchEnd={() => setTimeout(() => setPressedCard(null), 150)}
-                bodyStyle={{ padding: '20px' }}
+                styles={{ body: { padding: '20px' } }}
               >
                 {/* 背景装饰 */}
                 <div style={{
@@ -211,12 +211,14 @@ export default function MobileHome() {
                   onClick={() => handleCardClick(item.path, `extra-${index}`)}
                   onTouchStart={() => setPressedCard(`extra-${index}`)}
                   onTouchEnd={() => setTimeout(() => setPressedCard(null), 150)}
-                  bodyStyle={{ 
-                    padding: '20px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px'
+                  styles={{ 
+                    body: {
+                      padding: '20px 12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }
                   }}
                 >
                   <div style={{

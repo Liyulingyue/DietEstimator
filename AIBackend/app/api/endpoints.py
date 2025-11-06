@@ -23,15 +23,13 @@ def validate_estimate_request(
     method: str = Form(..., description="分析方法"),
     model_url: str = Form(..., description="模型API地址"),
     model_name: str = Form(..., description="模型名称"),
-    call_preference: str = Form("server", description="调用偏好"),
 ) -> EstimateRequest:
     """验证估算请求参数"""
     return EstimateRequest(
         api_key=api_key,
         method=method,
         model_url=model_url,
-        model_name=model_name,
-        call_preference=call_preference
+        model_name=model_name
     )
 
 router = APIRouter()
@@ -100,6 +98,13 @@ async def estimate_calories(
             result = estimator_service.process_llm_ocr_hybrid(image_bytes_list, api_key)
         elif request.method == AnalysisMethod.PURE_LLM.value:
             result = estimator_service.process_pure_llm(image_bytes_list, api_key)
+            # 处理pure_llm的结构化返回
+            if isinstance(result, dict) and "error" in result:
+                return EstimateResponse(
+                    success=False,
+                    message="分析失败",
+                    error=result["error"]
+                )
         elif request.method == AnalysisMethod.NUTRITION_TABLE.value:
             result = estimator_service.process_nutrition_table(image_bytes_list, api_key)
         elif request.method == AnalysisMethod.FOOD_PORTION.value:
@@ -221,7 +226,7 @@ async def test_ai_connection(
         测试结果
     """
     try:
-        result = llm_service.test_ai_connection(request.model_url, request.model_name, request.api_key, request.call_preference)
+        result = llm_service.test_ai_connection(request.model_url, request.model_name, request.api_key)
         return TestConnectionResponse(**result)
     except Exception as e:
         return TestConnectionResponse(

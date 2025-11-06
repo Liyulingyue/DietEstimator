@@ -80,7 +80,7 @@ function AppIntroduction() {
             marginBottom: '16px',
             background: 'linear-gradient(135deg, #fff 0%, #f0f9ff 100%)'
           }}
-          bodyStyle={{ padding: '32px 24px' }}
+          styles={{ body: { padding: '32px 24px' } }}
         >
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
@@ -107,7 +107,7 @@ function AppIntroduction() {
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             marginBottom: '16px'
           }}
-          bodyStyle={{ padding: '20px' }}
+          styles={{ body: { padding: '20px' } }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             {features.map((feature, index) => (
@@ -147,7 +147,7 @@ function AppIntroduction() {
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             marginBottom: '16px'
           }}
-          bodyStyle={{ padding: '24px' }}
+          styles={{ body: { padding: '24px' } }}
         >
           <Steps
             direction="vertical"
@@ -231,7 +231,7 @@ function AppIntroduction() {
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
             marginBottom: '16px'
           }}
-          bodyStyle={{ padding: '20px 12px' }}
+          styles={{ body: { padding: '20px 12px' } }}
         >
           <Collapse 
             bordered={false}

@@ -19,7 +19,6 @@ class EstimateRequest(BaseModel):
     method: AnalysisMethod = Field(..., description="分析方法")
     model_url: str = Field(..., description="模型API地址")
     model_name: str = Field(..., description="模型名称")
-    call_preference: str = Field("server", description="调用偏好")
     
     class Config:
         json_encoders = {
@@ -30,7 +29,7 @@ class EstimateResponse(BaseModel):
     """热量估算响应模型"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="响应消息")
-    result: Optional[str] = Field(None, description="分析结果")
+    result: Optional[Any] = Field(None, description="分析结果")
     error: Optional[str] = Field(None, description="错误信息")
 
 class HealthCheckResponse(BaseModel):
@@ -64,7 +63,6 @@ class TestConnectionRequest(BaseModel):
     model_url: str = Field(..., description="模型API地址")
     model_name: str = Field(..., description="模型名称")
     api_key: str = Field(..., description="API密钥")
-    call_preference: str = Field("server", description="调用偏好")
 
 
 class TestConnectionResponse(BaseModel):

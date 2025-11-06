@@ -37,8 +37,5 @@ class DietRecord(Base):
     image_url = Column(String(255))
     analysis_result = Column(Text)
     analysis_method = Column(String(50), default="pure_llm")  # 添加分析方法字段
-    food_description = Column(Text)  # Retaining existing field
-    calorie_estimate = Column(Integer)  # Retaining existing field
-    ai_analysis = Column(Text)  # Retaining existing field
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

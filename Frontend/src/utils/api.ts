@@ -190,7 +190,7 @@ export async function analyzeFood(
  */
 export async function getAvailableMethods(): Promise<any[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/methods`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/ai/methods`, {
       credentials: 'include',
     });
 
