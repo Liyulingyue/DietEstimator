@@ -175,7 +175,8 @@ export default function MobileAnalyse() {
     <ResponsiveLayout>
     <div style={{
       background: 'linear-gradient(180deg, #f6ffed 0%, #f5f5f5 100%)',
-      padding: '0'
+      padding: '0',
+      minHeight: '100vh'
     }}>
       {/* 顶部标题栏 */}
       <PageHeader

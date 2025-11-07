@@ -44,7 +44,7 @@ export default function MobileHome() {
   const extraFeatures = [
     { icon: SettingOutlined, label: '用户管理与配置', path: '/app/config', color: '#1890ff' },
     { icon: InfoCircleOutlined, label: '使用说明', path: '/app/introduction', color: '#13c2c2' },
-    { icon: PictureOutlined, label: '公共画廊', path: '/app/gallery', color: '#eb2f96' },
+    { icon: PictureOutlined, label: '画廊', path: '/app/gallery', color: '#eb2f96' },
   ];
 
   const handleCardClick = (path: string, key: string) => {
@@ -59,7 +59,8 @@ export default function MobileHome() {
     <ResponsiveLayout showGitHubButton={true}>
       <div style={{
         background: 'linear-gradient(180deg, #f0f5ff 0%, #f5f5f5 100%)',
-        padding: '0'
+        padding: '0',
+        minHeight: '100vh'
       }}>
         {/* 顶部头部区域 */}
         <PageHeader

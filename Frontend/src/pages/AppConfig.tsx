@@ -250,7 +250,8 @@ function AppConfig() {
     <ResponsiveLayout>
       <div style={{
         background: 'linear-gradient(180deg, #e6f7ff 0%, #f5f5f5 100%)',
-        padding: '0'
+        padding: '0',
+        minHeight: '100vh'
       }}>
       {/* 顶部标题栏 */}
       <PageHeader

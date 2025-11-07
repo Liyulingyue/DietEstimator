@@ -4,7 +4,7 @@ API路由集中管理模块
 """
 from fastapi import APIRouter
 
-from app.api import health, ai_estimate, records, auth, connection
+from app.api import health, ai_estimate, records, auth, connection, gallery
 
 # 创建主路由器实例
 router = APIRouter()
@@ -15,3 +15,4 @@ router.include_router(auth.router, prefix="/auth", tags=["认证"])
 router.include_router(ai_estimate.router, prefix="/ai", tags=["AI估算"])
 router.include_router(records.router, prefix="/records", tags=["饮食记录"])
 router.include_router(connection.router, prefix="/connection", tags=["连接测试"])
+router.include_router(gallery.router, prefix="/gallery", tags=["画廊分享"])

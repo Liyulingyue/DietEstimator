@@ -12,6 +12,7 @@ import MobilePanel from './mobile-panel';
 import AppConfig from './AppConfig';
 import AppIntroduction from './AppIntroduction';
 import AppGallery from './AppGallery';
+import BowelRecognition from './BowelRecognition';
 import Debug from './Debug';
 import { isLogin } from '../utils/auth';
 
@@ -70,14 +71,15 @@ export default function AppRouter() {
         <Route path="/analyse" element={<RequireAuth><Analyse /></RequireAuth>} />
         <Route path="/labs" element={<RequireAuth><Labs /></RequireAuth>} />
         <Route path="/panel" element={<RequireAuth><Panel /></RequireAuth>} />
-        {/* 移动端路由 */}
-        <Route path="/app/home" element={<RequireAuth><MobileHome /></RequireAuth>} />
-        <Route path="/app/analyse" element={<RequireAuth><MobileAnalyse /></RequireAuth>} />
-        <Route path="/app/labs" element={<RequireAuth><MobileLabs /></RequireAuth>} />
-        <Route path="/app/panel" element={<MobilePanel />} />
-        <Route path="/app/config" element={<AppConfig />} />
-        <Route path="/app/introduction" element={<RequireAuth><AppIntroduction /></RequireAuth>} />
-        <Route path="/app/gallery" element={<RequireAuth><AppGallery /></RequireAuth>} />
+  {/* 移动端路由：默认允许未登录访问，功能内部自行判断登录状态 */}
+  <Route path="/app/home" element={<MobileHome />} />
+  <Route path="/app/analyse" element={<MobileAnalyse />} />
+  <Route path="/app/labs" element={<MobileLabs />} />
+  <Route path="/app/panel" element={<MobilePanel />} />
+  <Route path="/app/config" element={<AppConfig />} />
+  <Route path="/app/introduction" element={<AppIntroduction />} />
+  <Route path="/app/gallery" element={<AppGallery />} />
+  <Route path="/app/bowel-recognition" element={<BowelRecognition />} />
       </Routes>
     </BrowserRouter>
   );

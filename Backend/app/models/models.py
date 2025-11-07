@@ -29,13 +29,23 @@ class Session(Base):
     user_agent = Column(Text)
 
 
+class GalleryShare(Base):
+    __tablename__ = "gallery_shares"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(255), nullable=True, index=True)  # 可为空，表示匿名用户
+    image_base64 = Column(Text)  # 图片的base64字符串
+    analysis_result = Column(Text)  # AI分析结果，JSON格式
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class DietRecord(Base):
     __tablename__ = "diet_records"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String(255), index=True)  # 使用定长字符串，足够存储用户ID
     image_url = Column(String(255))
-    analysis_result = Column(Text)
-    analysis_method = Column(String(50), default="pure_llm")  # 添加分析方法字段
+    analysis_result = Column(Text)  # AI分析结果，JSON格式
+    analysis_method = Column(String(50), default="pure_llm")  # 分析方法
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

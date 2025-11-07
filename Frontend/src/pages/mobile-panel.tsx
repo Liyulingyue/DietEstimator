@@ -620,18 +620,22 @@ export default function MobilePanel() {
             <Title level={2} style={{ color: '#722ed1', marginBottom: '16px' }}>
               未登录
             </Title>
-            <Text style={{ fontSize: '16px', color: '#8c8c8c' }}>
+            <Text style={{ fontSize: '16px', color: '#8c8c8c', marginBottom: '24px', display: 'block' }}>
               请先登录以查看您的饮食记录
             </Text>
             <Button
               type="primary"
               size="large"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/app/config')}
               style={{
-                marginTop: '24px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, #722ed1, #9254de)',
-                border: 'none'
+                border: 'none',
+                whiteSpace: 'normal',
+                lineHeight: '1.4',
+                padding: '12px 16px',
+                height: 'auto',
+                width: '100%'
               }}
             >
               前往登录
@@ -646,7 +650,8 @@ export default function MobilePanel() {
     <ResponsiveLayout>
     <div style={{
       background: 'linear-gradient(180deg, #f0f9ff 0%, #f5f5f5 100%)',
-      padding: '0'
+      padding: '0',
+      minHeight: '100vh'
     }}>
       {/* 顶部标题栏 */}
       <PageHeader

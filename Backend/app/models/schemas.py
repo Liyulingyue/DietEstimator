@@ -52,14 +52,18 @@ class DietRecordRequest(BaseModel):
 
 class AIConfig(BaseModel):
     """AI配置基础模型"""
-    model_url: str
-    model_name: str
-    api_key: str
+    model_url: Optional[str] = None
+    model_name: Optional[str] = None
+    api_key: Optional[str] = None
     call_preference: str = "server"  # 调用偏好，默认为server
 
 
 class TestConnectionRequest(AIConfig):
     """测试连接请求模型"""
+    model_url: str
+    model_name: str
+    api_key: str
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "model_url": "https://api.openai.com/v1",
@@ -89,8 +93,8 @@ class TestConnectionResponse(BaseModel):
 
 class AnalyzeRequest(AIConfig):
     """食物分析请求模型"""
-    session_id: str
-    user_id: str
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
     method: str = "pure_llm"
 
     model_config = ConfigDict(json_schema_extra={
@@ -111,7 +115,7 @@ class AnalyzeResponse(BaseModel):
     success: bool
     message: str
     result: Optional[dict] = None
-    session_id: str
+    session_id: Optional[str] = None
     method: str
     error: Optional[str] = None
 
@@ -120,17 +124,39 @@ class AnalyzeResponse(BaseModel):
             "success": True,
             "message": "分析完成",
             "result": {
-                "food_description": "一份蔬菜沙拉",
-                "calories": 150,
-                "nutrition_info": {
-                    "protein": "5g",
-                    "fat": "8g",
-                    "carbohydrate": "12g"
-                }
+                "food_name": "苹果",
+                "calories": 95,
+                "protein": 0.5,
+                "carbs": 25,
+                "fat": 0.3
             },
             "session_id": "abc123",
             "method": "pure_llm",
             "error": None
         }
     })
+
+
+class GalleryShareBase(BaseModel):
+    user_id: Optional[str] = None  # 可为空，表示匿名用户
+    image_base64: str
+    analysis_result: str  # JSON格式的分析结果
+
+
+class GalleryShareCreate(GalleryShareBase):
+    pass
+
+
+class GalleryShareResponse(GalleryShareBase):
+    id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GalleryShareListResponse(BaseModel):
+    shares: List[GalleryShareResponse]
+    total: int
+
+    model_config = ConfigDict(from_attributes=True)
 

@@ -5,7 +5,7 @@ import { analyzeFood } from '../utils/api';
 import type { AIConfig } from '../utils/api';
 
 interface GalleryProps {
-  onAnalysisComplete?: (result: any) => void;
+  onAnalysisComplete?: (result: any, images?: string[]) => void;
   onAnalysisStart?: () => void;
 }
 
@@ -138,7 +138,7 @@ export default function Gallery({ onAnalysisComplete, onAnalysisStart }: Gallery
             hasDescription: !!result.result?.food_description,
             hasNutrition: !!result.result?.nutrition_info
           });
-          onAnalysisComplete(result);
+          onAnalysisComplete(result, images);
           message.success('✅ 分析完成！');
         } else {
           console.warn('Gallery: onAnalysisComplete 回调未定义');

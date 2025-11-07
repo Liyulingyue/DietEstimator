@@ -1,15 +1,30 @@
-import { Card, Typography, Button, Progress, Tag } from 'antd';
-import { ExperimentOutlined, BulbOutlined, ApiOutlined, ThunderboltOutlined, StarOutlined, ScanOutlined } from '@ant-design/icons';
+import { Card, Typography, Button, Tag } from 'antd';
+import { ExperimentOutlined, BulbOutlined, ApiOutlined, ThunderboltOutlined, StarOutlined, ScanOutlined, MedicineBoxOutlined, PictureOutlined } from '@ant-design/icons';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text, Paragraph } = Typography;
 
 export default function MobileLabs() {
   const [pressedCard, setPressedCard] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const experiments = [
+    {
+      key: 'gallery-share',
+      title: '画廊',
+      description: '在画廊中浏览社区分享的餐食，并快速发布自己的健康餐图片。',
+      icon: PictureOutlined,
+      gradient: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)',
+      bgGradient: 'linear-gradient(135deg, #fff0f6 0%, #ffd6e7 100%)',
+      color: '#eb2f96',
+      tag: { text: 'Beta', color: 'magenta' },
+      progress: null,
+      available: true,
+      path: '/app/gallery'
+    },
     {
       key: 'weight',
       title: '智能重量估算',
@@ -18,9 +33,9 @@ export default function MobileLabs() {
       gradient: 'linear-gradient(135deg, #fa8c16 0%, #faad14 100%)',
       bgGradient: 'linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%)',
       color: '#fa8c16',
-      tag: { text: 'Beta', color: 'orange' },
-      progress: null,
-      available: true
+      tag: { text: 'Coming Soon', color: 'orange' },
+      progress: 90,
+      available: false
     },
     {
       key: 'package-scan',
@@ -31,8 +46,21 @@ export default function MobileLabs() {
       bgGradient: 'linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)',
       color: '#52c41a',
       tag: { text: 'Coming Soon', color: 'green' },
-      progress: 25,
+      progress: 75,
       available: false
+    },
+    {
+      key: 'bowel-recognition',
+      title: '排便识别',
+      description: '识别并记录排便情况，结合健康指标提供消化状态分析，帮助及时发现异常。',
+      icon: MedicineBoxOutlined,
+      gradient: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)',
+      bgGradient: 'linear-gradient(135deg, #fff2f0 0%, #ffd6d5 100%)',
+      color: '#ff4d4f',
+      tag: { text: 'Beta', color: 'red' },
+      progress: null,
+      available: true,
+      path: '/app/bowel-recognition'
     },
     {
       key: 'nutrition',
@@ -42,8 +70,8 @@ export default function MobileLabs() {
       gradient: 'linear-gradient(135deg, #13c2c2 0%, #36cfc9 100%)',
       bgGradient: 'linear-gradient(135deg, #e6fffb 0%, #b5f5ec 100%)',
       color: '#13c2c2',
-      tag: { text: 'Alpha', color: 'cyan' },
-      progress: 75,
+      tag: { text: 'Planned', color: 'cyan' },
+      progress: 0,
       available: false
     },
     {
@@ -55,23 +83,28 @@ export default function MobileLabs() {
       bgGradient: 'linear-gradient(135deg, #f9f0ff 0%, #efdbff 100%)',
       color: '#722ed1',
       tag: { text: 'Planned', color: 'purple' },
-      progress: 35,
+      progress: 0,
       available: false
     },
   ];
 
-  const handleCardClick = (key: string, available: boolean) => {
+  const handleCardClick = (key: string, available: boolean, path?: string) => {
     if (!available) return;
     setPressedCard(key);
-    setTimeout(() => setPressedCard(null), 150);
-    // TODO: 实现功能导航
+    setTimeout(() => {
+      setPressedCard(null);
+      if (path) {
+        navigate(path);
+      }
+    }, 150);
   };
 
   return (
     <ResponsiveLayout>
     <div style={{
       background: 'linear-gradient(180deg, #fff7e6 0%, #f5f5f5 100%)',
-      padding: '0'
+      padding: '0',
+      minHeight: '100vh'
     }}>
       {/* 顶部标题栏 */}
       <PageHeader
@@ -134,7 +167,7 @@ export default function MobileLabs() {
                   overflow: 'hidden',
                   position: 'relative'
                 }}
-                onClick={() => handleCardClick(exp.key, exp.available)}
+                onClick={() => handleCardClick(exp.key, exp.available, exp.path)}
                 onTouchStart={() => exp.available && setPressedCard(exp.key)}
                 onTouchEnd={() => setTimeout(() => setPressedCard(null), 150)}
                 styles={{ body: { padding: '24px' } }}
@@ -221,16 +254,23 @@ export default function MobileLabs() {
                           {exp.progress}%
                         </Text>
                       </div>
-                      <Progress 
-                        percent={exp.progress} 
-                        strokeColor={{
-                          '0%': exp.color,
-                          '100%': exp.color + 'aa'
-                        }}
-                        trailColor="rgba(255, 255, 255, 0.6)"
-                        size={8}
-                        showInfo={false}
-                      />
+                      <div style={{
+                        width: '100%',
+                        height: '10px',
+                        borderRadius: '6px',
+                        background: 'rgba(255, 255, 255, 0.6)',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(0, 0, 0, 0.04)'
+                      }}>
+                        <div
+                          style={{
+                            width: `${Math.min(100, Math.max(0, exp.progress))}%`,
+                            height: '100%',
+                            background: exp.gradient,
+                            transition: 'width 0.4s ease'
+                          }}
+                        />
+                      </div>
                     </div>
                   )}
 

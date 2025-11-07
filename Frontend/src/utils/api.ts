@@ -100,40 +100,20 @@ export async function analyzeFood(
   try {
     // 获取用户信息和session_id
     const userInfo = await getUserInfo();
-    if (!userInfo || !userInfo.is_logged_in) {
-      return {
-        success: false,
-        message: '请先登录',
-        error: '未登录用户无法使用此功能',
-      };
-    }
-
-    // 从localStorage或cookie中获取session_id
-    const sessionId = getSessionId();
-    console.log('DEBUG analyzeFood - sessionId:', sessionId);
-    console.log('DEBUG analyzeFood - localStorage.session_id:', localStorage.getItem('session_id'));
-    console.log('DEBUG analyzeFood - document.cookie:', document.cookie);
-    
-    if (!sessionId) {
-      console.error('ERROR: 无法获取会话ID');
-      return {
-        success: false,
-        message: '会话信息不完整',
-        error: '无法获取会话ID，请重新登录',
-      };
-    }
+    const isLoggedIn = !!userInfo?.is_logged_in;
+    const sessionId = isLoggedIn ? (getSessionId() || '') : '';
+    const userId = userInfo?.user_id || 'guest';
+    const callPreference = aiConfig?.preference || 'server';
 
     // 构建FormData
     const formData = new FormData();
     
     // 添加session和配置信息
     formData.append('session_id', sessionId);
-    formData.append('user_id', userInfo.user_id);
-    if (aiConfig?.method) {
-      formData.append('method', aiConfig.method);
-    } else {
-      formData.append('method', 'pure_llm'); // 默认方法
-    }
+    formData.append('user_id', userId);
+
+    const method = aiConfig?.method || 'pure_llm';
+    formData.append('method', method);
     
     // 添加AI配置信息
     if (aiConfig?.modelUrl) {
@@ -145,11 +125,7 @@ export async function analyzeFood(
     if (aiConfig?.apiKey) {
       formData.append('api_key', aiConfig.apiKey);
     }
-    if (aiConfig?.preference) {
-      formData.append('call_preference', aiConfig.preference);
-    } else {
-      formData.append('call_preference', 'server'); // 默认调用偏好
-    }
+    formData.append('call_preference', callPreference);
 
     // 添加图片文件
     images.forEach((image, index) => {
@@ -204,5 +180,104 @@ export async function getAvailableMethods(): Promise<any[]> {
   } catch (error) {
     console.error('获取分析方法异常:', error);
     return [];
+  }
+}
+
+/**
+ * 画廊分享接口
+ */
+export interface GalleryShare {
+  id: number;
+  user_id: number | null;
+  image_base64: string;
+  analysis_result: string;
+  created_at: string;
+}
+
+/**
+ * 画廊分享列表响应接口
+ */
+export interface GalleryShareListResponse {
+  shares: GalleryShare[];
+  total: number;
+}
+
+/**
+ * 分享到画廊的请求接口
+ */
+export interface ShareToGalleryRequest {
+  image_base64: string;
+  analysis_result: string;
+}
+
+/**
+ * 获取画廊分享列表
+ * @param skip - 跳过的记录数（分页）
+ * @param limit - 返回的记录数限制
+ * @returns 画廊分享列表
+ */
+export async function getGalleryShares(
+  skip: number = 0,
+  limit: number = 20
+): Promise<GalleryShareListResponse> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/gallery/list?skip=${skip}&limit=${limit}`,
+      {
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      console.error('获取画廊分享列表失败');
+      return { shares: [], total: 0 };
+    }
+
+    const data: GalleryShareListResponse = await response.json();
+    return data;
+  } catch (error) {
+    console.error('获取画廊分享列表异常:', error);
+    return { shares: [], total: 0 };
+  }
+}
+
+/**
+ * 分享餐食到画廊
+ * @param shareData - 分享数据
+ * @returns 分享结果
+ */
+export async function shareToGallery(
+  shareData: ShareToGalleryRequest
+): Promise<{ success: boolean; message: string; share?: GalleryShare }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/gallery/share`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(shareData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        message: errorData.detail || '分享失败',
+      };
+    }
+
+    const result: GalleryShare = await response.json();
+    return {
+      success: true,
+      message: '分享成功',
+      share: result,
+    };
+  } catch (error) {
+    console.error('分享到画廊异常:', error);
+    return {
+      success: false,
+      message: '分享过程中发生错误',
+    };
   }
 }

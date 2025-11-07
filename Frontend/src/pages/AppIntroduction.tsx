@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button, Card, Typography, Steps, Collapse } from 'antd'
-import { CheckCircleOutlined, RocketOutlined, FireOutlined, BarChartOutlined, BulbOutlined, SafetyOutlined } from '@ant-design/icons'
+import { CheckCircleOutlined, RocketOutlined, FireOutlined, BulbOutlined, SafetyOutlined, PictureOutlined, SettingOutlined } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
 
@@ -13,46 +13,52 @@ function AppIntroduction() {
   const features = [
     {
       icon: <FireOutlined style={{ fontSize: '32px', color: '#52c41a' }} />,
-      title: '热量分析',
-      description: '上传食物图片，AI 快速识别并分析热量',
+      title: '热量与营养分析',
+      description: '上传食物或包装照片，AI 自动识别并分析热量与常见营养成分（蛋白质/脂肪/碳水）',
       color: '#52c41a'
     },
     {
-      icon: <BarChartOutlined style={{ fontSize: '32px', color: '#722ed1' }} />,
-      title: '营养评估',
-      description: '提供蛋白质、脂肪、碳水等详细营养成分分析',
-      color: '#722ed1'
+      icon: <PictureOutlined style={{ fontSize: '32px', color: '#eb2f96' }} />,
+      title: '画廊与分享',
+      description: '将您的餐食分享到社区画廊，查看别人分享的健康餐与做法',
+      color: '#eb2f96'
     },
     {
-      icon: <BulbOutlined style={{ fontSize: '32px', color: '#1890ff' }} />,
-      title: '智能建议',
-      description: '基于分析结果提供个性化健康饮食建议',
+      icon: <SettingOutlined style={{ fontSize: '32px', color: '#1890ff' }} />,
+      title: '本地配置与饮食目标',
+      description: '在“用户管理与配置”中设置每日热量目标（本地保存，支持实时同步到状态页）',
       color: '#1890ff'
     },
     {
-      icon: <SafetyOutlined style={{ fontSize: '32px', color: '#fa8c16' }} />,
-      title: '数据安全',
-      description: '您的数据经过加密处理，保证隐私安全',
+      icon: <BulbOutlined style={{ fontSize: '32px', color: '#fa8c16' }} />,
+      title: '包装袋识别（实验功能）',
+      description: '实验室功能：识别包装袋上的营养成分表与克重信息，便于快速导入营养数据',
       color: '#fa8c16'
+    },
+    {
+      icon: <SafetyOutlined style={{ fontSize: '32px', color: '#722ed1' }} />,
+      title: '数据与隐私',
+      description: '用户数据默认本地优先，敏感信息不会随意外泄；登录后可选择同步到服务器',
+      color: '#722ed1'
     },
   ];
 
   const faqs = [
     {
       q: '如何获得最准确的分析结果？',
-      a: '建议拍摄清晰的食物照片，确保光线充足，食物完整可见。可以在照片中放置参照物（如手机、硬币）帮助 AI 更准确地估算份量。'
+      a: '拍摄清晰、光线充足、食物完整可见的照片；若拍摄包装袋，请确保营养成分表和净含量文字清晰可读。放置参照物（如信用卡、硬币）能提升重量及尺寸估算准确度。'
     },
     {
-      q: '支持哪些类型的食物？',
-      a: '我们的 AI 模型支持识别大部分常见食物，包括中餐、西餐、日料、快餐等。对于复杂的混合菜品，系统会尽可能分解并分析各个成分。'
+      q: '饮食目标如何设置与同步？',
+      a: '在“用户管理与配置”页面设置每日热量目标（默认 3000 kcal）。该配置保存在浏览器 localStorage，不依赖登录；状态管理页面会实时同步并更新进度。'
     },
     {
-      q: '分析需要多长时间？',
-      a: '通常情况下，分析会在几秒钟内完成。复杂的食物可能需要稍长时间，但一般不会超过 10 秒。'
+      q: '包装袋识别准确吗？',
+      a: '包装袋识别为实验功能。对于清晰印刷的营养成分表与克重信息，识别效果较好；手写、模糊或遮挡文本的识别准确性会下降。该功能目前仍在完善中。'
     },
     {
-      q: '数据会被如何使用？',
-      a: '您的数据仅用于提供个性化服务和改进 AI 模型。我们不会将您的个人数据分享给第三方，所有数据都经过加密存储。'
+      q: '我的数据会被上传到服务器吗？',
+      a: '默认情况下，关键配置（如饮食目标）保存在本地；若登录并授权，部分分析数据可同步到服务器用于跨设备查看和模型改进，上传前会提示并征得授权。'
     },
   ];
 
@@ -60,7 +66,8 @@ function AppIntroduction() {
     <ResponsiveLayout>
     <div style={{
       background: 'linear-gradient(180deg, #e6f7ff 0%, #f5f5f5 100%)',
-      padding: '0'
+      padding: '0',
+      minHeight: '100vh'
     }}>
       {/* 顶部标题栏 */}
       <PageHeader
@@ -88,7 +95,7 @@ function AppIntroduction() {
               欢迎使用饮食评估平台
             </Title>
             <Text style={{ fontSize: '15px', color: '#595959', lineHeight: '1.6' }}>
-              基于先进 AI 技术的智能饮食分析工具
+              基于多模块 AI 的智能饮食分析平台 — 支持图片分析、包装识别、本地配置与社区共享。
             </Text>
           </div>
         </Card>
@@ -98,7 +105,7 @@ function AppIntroduction() {
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <RocketOutlined style={{ color: '#1890ff' }} />
-              <Text strong style={{ fontSize: '16px' }}>主要功能</Text>
+              <Text strong style={{ fontSize: '16px' }}>主要功能（更新）</Text>
             </div>
           }
           style={{
@@ -138,7 +145,7 @@ function AppIntroduction() {
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircleOutlined style={{ color: '#52c41a' }} />
-              <Text strong style={{ fontSize: '16px' }}>使用步骤</Text>
+              <Text strong style={{ fontSize: '16px' }}>使用步骤（推荐）</Text>
             </div>
           }
           style={{
@@ -154,8 +161,8 @@ function AppIntroduction() {
             current={-1}
             items={[
               {
-                title: <Text strong>注册登录</Text>,
-                description: '创建您的个人账号，开始使用服务',
+                title: <Text strong>（可选）登录或使用本地模式</Text>,
+                description: '您可以选择登录以跨设备同步数据；也可以以本地模式使用，部分配置会保存在本地浏览器中',
                 icon: <div style={{ 
                   width: '32px', 
                   height: '32px', 
@@ -169,8 +176,8 @@ function AppIntroduction() {
                 }}>1</div>
               },
               {
-                title: <Text strong>上传食物图片</Text>,
-                description: '拍摄或上传食物照片，支持多种格式',
+                title: <Text strong>上传食物或包装照片</Text>,
+                description: '拍摄或上传食物照片；若要识别营养成分表，请上传清晰的包装袋照片',
                 icon: <div style={{ 
                   width: '32px', 
                   height: '32px', 
@@ -185,7 +192,7 @@ function AppIntroduction() {
               },
               {
                 title: <Text strong>AI 智能分析</Text>,
-                description: '等待几秒钟，AI 将自动识别并分析',
+                description: 'AI 会识别食物及包装信息，返回热量、营养成分和（如适用）包装净重信息',
                 icon: <div style={{ 
                   width: '32px', 
                   height: '32px', 
@@ -199,8 +206,8 @@ function AppIntroduction() {
                 }}>3</div>
               },
               {
-                title: <Text strong>查看详细报告</Text>,
-                description: '获取热量、营养成分和健康建议',
+                title: <Text strong>查看与保存</Text>,
+                description: '查看详细报告，可将结果保存为记录或分享到画廊（匿名/登录两种模式）',
                 icon: <div style={{ 
                   width: '32px', 
                   height: '32px', 
@@ -263,23 +270,23 @@ function AppIntroduction() {
         </Card>
 
         {/* 开始使用按钮 */}
-        <Button
-          type="primary"
-          size="large"
-          block
-          onClick={() => navigate('/app/analyse')}
-          style={{
-            height: '52px',
-            borderRadius: '16px',
-            fontSize: '16px',
-            fontWeight: '600',
-            background: 'linear-gradient(135deg, #52c41a, #73d13d)',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(82, 196, 26, 0.3)'
-          }}
-        >
-          开始使用 →
-        </Button>
+            <Button
+              type="primary"
+              size="large"
+              block
+              onClick={() => navigate('/app/analyse')}
+              style={{
+                height: '52px',
+                borderRadius: '16px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: 'linear-gradient(135deg, #52c41a, #73d13d)',
+                border: 'none',
+                boxShadow: '0 4px 16px rgba(82, 196, 26, 0.3)'
+              }}
+            >
+              立即开始分析 →
+            </Button>
       </div>
     </div>
     </ResponsiveLayout>

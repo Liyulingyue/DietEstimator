@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import httpx
 import logging
 import json
+import time
 from pydantic import BaseModel
 
 from app.core.database import get_db
@@ -14,12 +15,12 @@ from app.models.models import DietRecord, User
 from app.models.schemas import AnalyzeRequest, AnalyzeResponse
 
 def validate_analyze_request(
-    session_id: str = Form(...),
-    user_id: str = Form(...),
+    session_id: Optional[str] = Form(default=""),
+    user_id: Optional[str] = Form(default=""),
     method: str = Form(default="pure_llm"),
-    model_url: str = Form(...),
-    model_name: str = Form(...),
-    api_key: str = Form(...),
+    model_url: Optional[str] = Form(default=""),
+    model_name: Optional[str] = Form(default=""),
+    api_key: Optional[str] = Form(default=""),
     call_preference: str = Form(default="server"),
 ) -> AnalyzeRequest:
     """验证分析请求参数"""
@@ -204,21 +205,38 @@ async def analyze_food(
     
     try:
         # 基于Session进行会话有效性判断
-        current_user = get_current_user(analyze_request.session_id)
-        
-        # 如果会话有效且用户有足够的服务调用点，则使用服务器配置
+        session_id = analyze_request.session_id or ""
+        current_user = get_current_user(session_id)
+
+        call_preference = (analyze_request.call_preference or "server").lower()
+
+        # 如果会话有效且用户有足够的服务调用点，并且明确选择服务器优先，则使用服务器配置
         use_server_config = (
+            call_preference == "server" and
             current_user is not None and 
             current_user.is_logged_in and 
-            current_user.server_credits > 0 and
-            analyze_request.call_preference == "server"
+            current_user.server_credits > 0
         )
-        
-        if analyze_request.call_preference == "server" and not use_server_config:
+
+        if call_preference == "server" and not use_server_config:
             if current_user and current_user.is_logged_in:
-                logger.warning(f"用户 {current_user.username} 选择服务器模式但调用点不足 (剩余: {current_user.server_credits})，将使用自定义配置")
+                logger.warning(
+                    "用户 %s 选择服务器模式但调用点不足 (剩余: %s)，将自动切换到自定义配置",
+                    current_user.username,
+                    current_user.server_credits
+                )
             else:
-                logger.info("会话无效，将使用自定义配置")
+                logger.info("未检测到有效会话，服务器模式将自动退回到自定义模式")
+            call_preference = "custom"
+
+        if not session_id:
+            session_id = f"guest-{int(time.time() * 1000)}"
+            logger.debug("生成游客会话ID: %s", session_id)
+
+        user_id = analyze_request.user_id or (current_user.user_id if current_user else "guest")
+
+        analyze_request.session_id = session_id
+        analyze_request.user_id = user_id
         
         # 根据条件选择AI配置
         if use_server_config:
@@ -234,6 +252,23 @@ async def analyze_food(
                 logger.info(f"用户 {current_user.username} 使用自定义配置")
             else:
                 logger.info("使用自定义配置（会话无效）")
+
+            if call_preference == "custom":
+                missing_fields = [
+                    field_name
+                    for field_name, value in {
+                        "model_url": model_url,
+                        "model_name": model_name,
+                        "api_key": api_key
+                    }.items()
+                    if not value
+                ]
+                if missing_fields:
+                    logger.error("自定义配置缺少必要参数: %s", ", ".join(missing_fields))
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"自定义配置缺少必要参数: {', '.join(missing_fields)}"
+                    )
         
         # 根据分析方法选择AI后端的对应接口
         ai_endpoint = {
@@ -261,7 +296,8 @@ async def analyze_food(
                     'model_url': model_url,
                     'model_name': model_name,
                     'api_key': api_key,
-                    'method': analyze_request.method  # 添加缺失的method参数
+                    'method': analyze_request.method,  # 添加缺失的method参数
+                    'call_preference': call_preference
                 }
                 
                 resp = await client.post(
@@ -303,7 +339,7 @@ async def analyze_food(
             success=True,
             message="分析完成",
             result=ai_result,
-            session_id=analyze_request.session_id,
+            session_id=session_id,
             method=analyze_request.method,
             error=None
         )
