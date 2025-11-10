@@ -1,48 +1,52 @@
 """
-FastAPI路由端点
+食物热量估算相关端点
 """
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from typing import List
-from datetime import datetime
-import json
 
 from app.models.schemas import (
     EstimateResponse, 
-    HealthCheckResponse, 
     AnalysisMethod,
     EstimateRequest,
-    TestConnectionRequest,
-    TestConnectionResponse
 )
-from app.services.estimator import estimator_service
-from app.services.llm_service import llm_service
+from app.services.pure_llm_processor import process_pure_llm
+from app.utils.validators import validate_estimate_request
 
-def validate_estimate_request(
-    api_key: str = Form(..., description="API密钥"),
-    method: str = Form(..., description="分析方法"),
-    model_url: str = Form(..., description="模型API地址"),
-    model_name: str = Form(..., description="模型名称"),
-) -> EstimateRequest:
-    """验证估算请求参数"""
-    return EstimateRequest(
-        api_key=api_key,
-        method=method,
-        model_url=model_url,
-        model_name=model_name
-    )
+router = APIRouter(prefix="/estimate", tags=["estimate"])
 
-router = APIRouter()
+async def _validate_and_read_files(files: List[UploadFile], api_key: str):
+    """验证文件和API密钥，读取图片字节流"""
+    # 验证文件
+    if not files:
+        raise HTTPException(status_code=400, detail="请上传至少一张图片")
 
-@router.get("/health", response_model=HealthCheckResponse)
-async def health_check():
-    """健康检查端点"""
-    return HealthCheckResponse(
-        status="healthy",
-        timestamp=datetime.now().isoformat()
-    )
+    # 使用请求中的API密钥
+    if not api_key or api_key.strip() == "":
+        raise HTTPException(status_code=400, detail="API密钥不能为空")
 
-@router.post("/estimate", response_model=EstimateResponse)
+    # 验证文件类型
+    for file in files:
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=400,
+                detail=f"文件 {file.filename} 不是有效的图片格式"
+            )
+
+    # 读取图片字节流
+    image_bytes_list = []
+    for file in files:
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"文件 {file.filename} 为空"
+            )
+        image_bytes_list.append(content)
+
+    return image_bytes_list
+
+@router.post("", response_model=EstimateResponse)
 async def estimate_calories(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
     request: EstimateRequest = Depends(validate_estimate_request)
@@ -97,7 +101,7 @@ async def estimate_calories(
         if request.method == AnalysisMethod.LLM_OCR_HYBRID.value:
             result = estimator_service.process_llm_ocr_hybrid(image_bytes_list, api_key)
         elif request.method == AnalysisMethod.PURE_LLM.value:
-            result = estimator_service.process_pure_llm(image_bytes_list, api_key)
+            result = process_pure_llm(image_bytes_list, api_key)
             # 处理pure_llm的结构化返回
             if isinstance(result, dict) and "error" in result:
                 return EstimateResponse(
@@ -127,110 +131,134 @@ async def estimate_calories(
             error=str(e)
         )
 
-@router.post("/estimate/llm_ocr_hybrid", response_model=EstimateResponse)
+@router.post("/llm_ocr_hybrid", response_model=EstimateResponse)
 async def estimate_llm_ocr_hybrid(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
     request: EstimateRequest = Depends(validate_estimate_request)
 ):
     """
     大模型OCR混合估算
-    
+
     适用场景：有营养标签的包装食品热量计算
     """
-    # 强制设置方法为LLM_OCR_HYBRID
-    request.method = AnalysisMethod.LLM_OCR_HYBRID.value
-    return await estimate_calories(files, request)
+    try:
+        image_bytes_list = await _validate_and_read_files(files, request.api_key)
 
-@router.post("/estimate/pure_llm", response_model=EstimateResponse)
+        # 直接调用LLM-OCR混合处理
+        result = estimator_service.process_llm_ocr_hybrid(image_bytes_list, request.api_key)
+
+        return EstimateResponse(
+            success=True,
+            message="分析完成",
+            result=result
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return EstimateResponse(
+            success=False,
+            message="分析失败",
+            error=str(e)
+        )
+
+@router.post("/pure_llm", response_model=EstimateResponse)
 async def estimate_pure_llm(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
     request: EstimateRequest = Depends(validate_estimate_request)
 ):
     """
     基于大模型估算
-    
+
     适用场景：所有类型食物（新鲜食材、自制食品、包装食品等）
     """
-    # 强制设置方法为PURE_LLM
-    request.method = AnalysisMethod.PURE_LLM.value
-    return await estimate_calories(files, request)
+    try:
+        image_bytes_list = await _validate_and_read_files(files, request.api_key)
 
-@router.post("/estimate/nutrition-table", response_model=EstimateResponse)
+        # 直接调用纯LLM处理
+        result = process_pure_llm(image_bytes_list, request.api_key)
+
+        # 处理结构化返回
+        if isinstance(result, dict) and "error" in result:
+            return EstimateResponse(
+                success=False,
+                message="分析失败",
+                error=result["error"]
+            )
+
+        return EstimateResponse(
+            success=True,
+            message="分析完成",
+            result=result
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return EstimateResponse(
+            success=False,
+            message="分析失败",
+            error=str(e)
+        )
+
+@router.post("/nutrition-table", response_model=EstimateResponse)
 async def estimate_nutrition_table(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
     request: EstimateRequest = Depends(validate_estimate_request)
 ):
     """
     营养成分表提取
-    
+
     适用场景：需要详细营养成分信息的包装食品
     """
-    # 强制设置方法为NUTRITION_TABLE
-    request.method = AnalysisMethod.NUTRITION_TABLE.value
-    return await estimate_calories(files, request)
+    try:
+        image_bytes_list = await _validate_and_read_files(files, request.api_key)
 
-@router.post("/estimate/food-portion", response_model=EstimateResponse)
+        # 直接调用营养成分表处理
+        result = estimator_service.process_nutrition_table(image_bytes_list, request.api_key)
+
+        return EstimateResponse(
+            success=True,
+            message="分析完成",
+            result=result
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return EstimateResponse(
+            success=False,
+            message="分析失败",
+            error=str(e)
+        )
+
+@router.post("/food-portion", response_model=EstimateResponse)
 async def estimate_food_portion(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
     request: EstimateRequest = Depends(validate_estimate_request)
 ):
     """
     食物份量检测
-    
+
     适用场景：需要准确份量信息的包装食品或标签
     """
-    # 强制设置方法为FOOD_PORTION
-    request.method = AnalysisMethod.FOOD_PORTION.value
-    return await estimate_calories(files, request)
-
-@router.get("/methods")
-async def get_available_methods():
-    """
-    获取可用的分析方法
-    """
-    methods = []
-    for method in AnalysisMethod:
-        if method == AnalysisMethod.LLM_OCR_HYBRID:
-            description = "大模型OCR混合估算 - 适用于有营养标签的包装食品"
-        elif method == AnalysisMethod.PURE_LLM:
-            description = "基于大模型估算 - 适用于所有类型食物"
-        elif method == AnalysisMethod.NUTRITION_TABLE:
-            description = "营养成分表提取 - 获取详细营养成分信息"
-        elif method == AnalysisMethod.FOOD_PORTION:
-            description = "食物份量检测 - 获取准确份量信息"
-        else:
-            description = "未知方法"
-            
-        methods.append({
-            "value": method.value,
-            "name": method.name,
-            "description": description
-        })
-    
-    return {
-        "methods": methods,
-        "total": len(methods)
-    }
-
-@router.post("/test-connection", response_model=TestConnectionResponse)
-async def test_ai_connection(
-    request: TestConnectionRequest
-) -> TestConnectionResponse:
-    """
-    测试AI连接连通性
-
-    Args:
-        request: 测试连接请求
-
-    Returns:
-        测试结果
-    """
     try:
-        result = llm_service.test_ai_connection(request.model_url, request.model_name, request.api_key)
-        return TestConnectionResponse(**result)
+        image_bytes_list = await _validate_and_read_files(files, request.api_key)
+
+        # 直接调用食物份量检测处理
+        result = estimator_service.process_food_portion(image_bytes_list, request.api_key)
+
+        return EstimateResponse(
+            success=True,
+            message="分析完成",
+            result=result
+        )
+
+    except HTTPException:
+        raise
     except Exception as e:
-        return TestConnectionResponse(
-            status="error",
-            message=f"测试过程中发生错误: {str(e)}",
-            response=None
+        return EstimateResponse(
+            success=False,
+            message="分析失败",
+            error=str(e)
         )

@@ -11,6 +11,6 @@ if __name__ == "__main__":
         "app.main:app",
         host="0.0.0.0",
         port=8001,
-        reload=True,  # 开发模式下启用自动重载
+        reload=False, # Disable auto-reload for production
         log_level="info"
     )

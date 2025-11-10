@@ -5,7 +5,7 @@ FastAPI Diet Estimator Application
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import router
+from app.api import router
 
 app = FastAPI(
     title="Diet Estimator API",

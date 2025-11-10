@@ -19,15 +19,15 @@ from ..utils.prompt_helper import (
     get_prompt_portion_analysis,
     extract_json_from_string
 )
-
-OPENAI_API_URL = "https://aistudio.baidu.com/llm/lmapi/v3"
-# ERNIE-4.5-VL-28B-A3B: 图片理解模型
-# ERNIE-4.5-21B-A3B: 文本对话模型
+from ..utils.llm_helper import (
+    get_llm_answer,
+    get_vl_llm_answer,
+    parse_json_result
+)
 
 class LLMService:
     def __init__(self):
-        self.vision_model = "ERNIE-4.5-VL-28B-A3B"
-        self.text_model = "ERNIE-4.5-21B-A3B"
+        pass
     
     def _safe_json_parse(self, response: str) -> dict:
         """
@@ -73,7 +73,7 @@ class LLMService:
         try:
             client = openai.OpenAI(
                 api_key=api_key,
-                base_url=model_url or OPENAI_API_URL
+                base_url=model_url
             )
             
             if image_path:
@@ -124,11 +124,11 @@ class LLMService:
     def check_nutrition_table(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> bool:
         """
         检查图片中是否包含营养成分表
-        
+
         Args:
             image_path: 图片路径
             api_key: API密钥
-            
+
         Returns:
             是否包含营养成分表
         """
@@ -142,14 +142,13 @@ class LLMService:
             - 只有包含明确的营养成分表（如能量、蛋白质、脂肪、碳水化合物等营养信息）才返回true
             - 普通的产品信息、价格标签、配料表等不算营养成分表
             """
-            
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
-            
+
+            response = get_vl_llm_answer(prompt, image_path, api_key, model_url, model_name)
+
             # 解析JSON响应
-            result = self._safe_json_parse(response)
+            result = parse_json_result(response)
             return result.get("是否包含营养成分表", False)
-            
+
         except Exception as e:
             print(f"[LLMService] Check nutrition table failed: {e}")
             return False
@@ -157,26 +156,25 @@ class LLMService:
     def check_food_portion(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         检查图片中是否包含食物份量信息
-        
+
         Args:
             image_path: 图片路径
             api_key: API密钥
-            
+
         Returns:
             包含份量检测结果的字典
         """
         try:
             prompt = get_prompt_portion_check()
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
-            
+            response = get_vl_llm_answer(prompt, image_path, api_key, model_url, model_name)
+
             # 解析JSON响应
-            result = self._safe_json_parse(response)
+            result = parse_json_result(response)
             return {
                 "是否包含份量信息": result.get("是否包含份量信息", False),
                 "份量类型": result.get("份量类型", "未知")
             }
-            
+
         except Exception as e:
             print(f"[LLMService] Check food portion failed: {e}")
             return {"是否包含份量信息": False, "份量类型": "未知"}
@@ -184,28 +182,27 @@ class LLMService:
     def analyze_nutrition_info(self, image_path: str, ocr_text: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         分析营养成分信息
-        
+
         Args:
             image_path: 图片路径
             ocr_text: OCR提取的文本
             api_key: API密钥
-            
+
         Returns:
             营养分析结果
         """
         try:
             prompt = get_prompt_nutrition_analysis(ocr_text)
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
-            
+            response = get_llm_answer(prompt, api_key, model_url, model_name)
+
             # 解析JSON响应
-            result = self._safe_json_parse(response)
-            
+            result = parse_json_result(response)
+
             if result:
                 return {"状态": "成功", "分析结果": result}
             else:
                 return {"状态": "失败", "错误信息": "无法解析营养成分信息"}
-                
+
         except Exception as e:
             print(f"[LLMService] Analyze nutrition info failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
@@ -224,11 +221,10 @@ class LLMService:
         """
         try:
             prompt = get_prompt_portion_analysis(ocr_text)
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
+            response = get_llm_answer(prompt, api_key, model_url, model_name)
             
             # 解析JSON响应
-            result = self._safe_json_parse(response)
+            result = parse_json_result(response)
             
             if result:
                 return {"状态": "成功", "分析结果": result}
@@ -242,32 +238,31 @@ class LLMService:
     def analyze_single_image_calories(self, image_path: str, api_key: str, model_url: str = None, model_name: str = None) -> Dict:
         """
         分析单张图片的热量
-        
+
         Args:
             image_path: 图片路径
             api_key: API密钥
-            
+
         Returns:
             热量分析结果
         """
         try:
             prompt = get_prompt_single_image_analysis()
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.vision_model, image_path, api_key, model_url)
-            
+            response = get_vl_llm_answer(prompt, image_path, api_key, model_url, model_name)
+
             # 解析JSON响应
-            result = self._safe_json_parse(response)
-            
+            result = parse_json_result(response)
+
             if result and "热量" in result:
                 return {
-                    "状态": "成功", 
+                    "状态": "成功",
                     "食物名称": result.get("食物名称", "未知食物"),
-                    "热量": result["热量"], 
+                    "热量": result["热量"],
                     "估算依据": result.get("估算依据", "")
                 }
             else:
                 return {"状态": "失败", "错误信息": "无法分析图片热量"}
-                
+
         except Exception as e:
             print(f"[LLMService] Analyze single image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
@@ -285,11 +280,10 @@ class LLMService:
         """
         try:
             prompt = get_prompt_multi_image_analysis(single_results)
-            messages = [{"role": "user", "content": prompt}]
-            response = self.get_openai_response(messages, model_name or self.text_model, None, api_key, model_url)
+            response = get_llm_answer(prompt, api_key, model_url, model_name)
             
             # 解析JSON响应
-            result = self._safe_json_parse(response)
+            result = parse_json_result(response)
             
             if result and "总热量" in result:
                 return {"状态": "成功", "总热量": result["总热量"], "估算依据": result.get("估算依据", "")}
@@ -299,74 +293,6 @@ class LLMService:
         except Exception as e:
             print(f"[LLMService] Summarize multi image calories failed: {e}")
             return {"状态": "失败", "错误信息": str(e)}
-
-    def test_ai_connection(self, model_url: str, model_name: str, api_key: str) -> Dict:
-        """
-        测试AI连接连通性
-        
-        Args:
-            model_url: 模型API地址
-            model_name: 模型名称
-            api_key: API密钥
-            
-        Returns:
-            测试结果
-        """
-        try:
-            # 创建OpenAI客户端
-            client = openai.OpenAI(
-                api_key=api_key,
-                base_url=model_url
-            )
-            
-            # 发送简单的测试消息
-            messages = [{"role": "user", "content": "hi"}]
-            
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                max_tokens=10  # 限制响应长度
-            )
-            
-            # 检查响应是否成功
-            if response.choices and len(response.choices) > 0:
-                content = response.choices[0].message.content
-                return {
-                    "status": "success",
-                    "message": "AI连接测试成功",
-                    "response": content.strip() if content else "无响应内容"
-                }
-            else:
-                return {
-                    "status": "error",
-                    "message": "AI响应为空"
-                }
-                
-        except openai.AuthenticationError:
-            return {
-                "status": "error",
-                "message": "API密钥无效或认证失败"
-            }
-        except openai.NotFoundError:
-            return {
-                "status": "error",
-                "message": "模型不存在或API地址错误"
-            }
-        except openai.RateLimitError:
-            return {
-                "status": "error",
-                "message": "请求频率过高，请稍后再试"
-            }
-        except openai.APIConnectionError:
-            return {
-                "status": "error",
-                "message": "无法连接到API服务器"
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"连接测试失败: {str(e)}"
-            }
 
 # 全局LLM服务实例
 llm_service = LLMService()

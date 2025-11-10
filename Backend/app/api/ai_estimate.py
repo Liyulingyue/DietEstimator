@@ -124,7 +124,7 @@ async def proxy_nutrition_table(
     file0 = files[0]
     content = await file0.read()
     logger.info(f"proxy_nutrition_table received file: name={file0.filename}, content_type={file0.content_type}, size={len(content)}")
-    url = _backend_url('/api/v1/nutrition_table')
+    url = _backend_url('/api/v1/estimate/nutrition-table')
     logger.debug(f"Forwarding to AI backend: url={url}")
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
@@ -159,7 +159,7 @@ async def proxy_food_portion(
     file0 = files[0]
     content = await file0.read()
     logger.info(f"proxy_food_portion received file: name={file0.filename}, content_type={file0.content_type}, size={len(content)}")
-    url = _backend_url('/api/v1/food_portion')
+    url = _backend_url('/api/v1/estimate/food-portion')
     logger.debug(f"Forwarding to AI backend: url={url}")
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
@@ -274,8 +274,8 @@ async def analyze_food(
         ai_endpoint = {
             "pure_llm": "/api/v1/estimate/pure_llm",
             "llm_ocr_hybrid": "/api/v1/estimate/llm_ocr_hybrid",
-            "nutrition_table": "/api/v1/nutrition_table",
-            "food_portion": "/api/v1/food_portion",
+            "nutrition_table": "/api/v1/estimate/nutrition-table",
+            "food_portion": "/api/v1/estimate/food-portion",
         }.get(analyze_request.method, "/api/v1/estimate/pure_llm")
         
         # 转发到AI后端进行分析

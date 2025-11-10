@@ -8,6 +8,7 @@ import tempfile
 import os
 from .ocr_service import ocr_service
 from .llm_service import llm_service
+from .analysis_service import food_analysis_service
 
 class DietEstimatorService:
     """饮食热量估算服务"""
@@ -15,6 +16,7 @@ class DietEstimatorService:
     def __init__(self):
         self.ocr_service = ocr_service
         self.llm_service = llm_service
+        self.analysis_service = food_analysis_service
     
     def process_llm_ocr_hybrid(self, image_files: List[bytes], api_key: str, model_url: str = None, model_name: str = None) -> str:
         """
@@ -43,7 +45,7 @@ class DietEstimatorService:
                     temp_file.write(image_bytes)
                     temp_file.flush()
                     
-                    contains_nutrition = self.llm_service.check_nutrition_table(temp_file.name, api_key, model_url, model_name)
+                    contains_nutrition = self.analysis_service.check_nutrition_table(temp_file.name, api_key, model_url, model_name)
                     image_infos.append({
                         "图片序号": i + 1,
                         "图片路径": temp_file.name,
@@ -68,7 +70,7 @@ class DietEstimatorService:
                 continue
                 
             try:
-                portion_info = self.llm_service.check_food_portion(info["图片路径"], api_key, model_url, model_name)
+                portion_info = self.analysis_service.check_portion_size(info["图片路径"], api_key, model_url, model_name)
                 info["是否包含分量信息"] = portion_info["是否包含份量信息"]
                 info["份量类型"] = portion_info["份量类型"]
                 
@@ -217,89 +219,6 @@ class DietEstimatorService:
         
         return "\n".join(output_parts)
     
-    def process_pure_llm(self, image_files: List[bytes], api_key: str, model_url: str = None, model_name: str = None) -> Dict[str, Any]:
-        """
-        纯LLM方案处理图片分析
-        
-        Args:
-            image_files: 图片字节流列表
-            api_key: API密钥
-            
-        Returns:
-            结构化分析结果字典
-        """
-        if not image_files or len(image_files) == 0:
-            return {"error": "请先上传图片"}
-        
-        if not api_key or api_key.strip() == "":
-            return {"error": "请输入API Key"}
-        
-        try:
-            # 创建临时文件
-            temp_files = []
-            for image_bytes in image_files:
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.jpg')
-                temp_file.write(image_bytes)
-                temp_file.flush()
-                temp_files.append(temp_file.name)
-                temp_file.close()
-            
-            # 单张图片进行推理
-            single_results = []
-            for i, file_path in enumerate(temp_files):
-                result = self.llm_service.analyze_single_image_calories(file_path, api_key, model_url, model_name)
-                single_results.append(result)
-            
-            # 筛选出有效的结果
-            single_useful_results = []
-            unuseful_results = []
-            for i, result in enumerate(single_results):
-                if result.get("状态") == "成功":
-                    food_name = result.get("食物名称", "未知食物")
-                    calories = result.get("热量", "未知")
-                    reason = result.get("估算依据", "无说明")
-                    single_useful_results.append((i + 1, food_name, calories, reason))
-                else:
-                    error_msg = result.get("错误信息", "未知错误")
-                    unuseful_results.append((i + 1, error_msg))
-            
-            # 清理临时文件
-            for temp_file in temp_files:
-                try:
-                    os.unlink(temp_file)
-                except:
-                    pass
-            
-            # 生成结构化输出结果
-            if len(single_useful_results) == 0:
-                return {"error": "没有有效图片"}
-            elif len(single_useful_results) == 1:
-                (index, food_name, calories, reason) = single_useful_results[0]
-                return {
-                    "food_name": food_name,
-                    "calories": calories,
-                    "estimation_basis": reason
-                }
-            else:
-                # 多张图片的情况，综合分析
-                result = self.llm_service.summarize_multi_image_calories(single_useful_results, api_key, model_url, model_name)
-                if result.get("状态") == "成功":
-                    total_calories = result.get("总热量", "未知")
-                    total_reason = result.get("估算依据", "无说明")
-                    # 从第一张图片获取食物名称作为代表
-                    food_name = single_useful_results[0][1] if single_useful_results else "多种食物"
-                    return {
-                        "food_name": food_name,
-                        "calories": total_calories,
-                        "estimation_basis": total_reason
-                    }
-                else:
-                    error_msg = result.get("错误信息", "未知错误")
-                    return {"error": f"综合分析失败: {error_msg}"}
-            
-        except Exception as e:
-            return {"error": f"处理出错: {str(e)}"}
-    
     def process_nutrition_table(self, image_files: List[bytes], api_key: str, model_url: str = None, model_name: str = None) -> str:
         """
         营养成分表提取处理
@@ -327,7 +246,7 @@ class DietEstimatorService:
                     temp_file.write(image_bytes)
                     temp_file.flush()
                     
-                    contains_table = self.llm_service.check_nutrition_table(temp_file.name, api_key, model_url, model_name)
+                    contains_table = self.analysis_service.check_nutrition_table(temp_file.name, api_key, model_url, model_name)
                     image_infos.append({
                         "图片路径": temp_file.name,
                         "图片序号": i + 1,
@@ -435,7 +354,7 @@ class DietEstimatorService:
                     temp_file.write(image_bytes)
                     temp_file.flush()
                     
-                    portion_info = self.llm_service.check_food_portion(temp_file.name, api_key, model_url, model_name)
+                    portion_info = self.analysis_service.check_portion_size(temp_file.name, api_key, model_url, model_name)
                     image_infos.append({
                         "图片路径": temp_file.name,
                         "图片序号": i + 1,

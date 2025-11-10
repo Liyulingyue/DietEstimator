@@ -36,7 +36,7 @@ async def test_connection(
     model_name = request.model_name
     api_key = request.api_key
 
-    url = _backend_url('/api/v1/test-connection')
+    url = _backend_url('/api/v1/connection/test-connection')
     logger.debug(f"Forwarding to AI backend: url={url}")
 
     # 准备表单数据
