@@ -46,7 +46,7 @@ async def _validate_and_read_files(files: List[UploadFile], api_key: str):
 
     return image_bytes_list
 
-def _create_estimate_response(success: bool, message: str, result: Any = None, error: str = None) -> EstimateResponse:
+def _create_estimate_response(success: bool, message: str, result: any = None, error: str = None) -> EstimateResponse:
     """创建结构化的EstimateResponse"""
     if success and result is not None:
         # 处理成功的响应

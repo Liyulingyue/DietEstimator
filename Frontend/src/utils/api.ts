@@ -23,6 +23,9 @@ export interface AnalysisResult {
   session_id?: string;
   method?: string;
   error?: string;
+  food_name?: string;
+  calories?: string;
+  estimation_basis?: string;
 }
 
 /**

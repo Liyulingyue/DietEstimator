@@ -1,6 +1,15 @@
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
+from enum import Enum
+
+
+class AnalysisMethod(str, Enum):
+    """分析方法枚举"""
+    LLM_OCR_HYBRID = "llm_ocr_hybrid"  # 大模型OCR混合估算
+    PURE_LLM = "pure_llm"  # 基于大模型估算
+    NUTRITION_TABLE = "nutrition_table"  # 营养成分表提取
+    FOOD_PORTION = "food_portion"  # 食物份量检测
 
 
 class HealthResponse(BaseModel):
@@ -118,21 +127,25 @@ class AnalyzeResponse(BaseModel):
     session_id: Optional[str] = None
     method: str
     error: Optional[str] = None
+    food_name: Optional[str] = None
+    calories: Optional[str] = None
+    estimation_basis: Optional[str] = None
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "success": True,
             "message": "分析完成",
             "result": {
-                "food_name": "苹果",
-                "calories": 95,
-                "protein": 0.5,
-                "carbs": 25,
-                "fat": 0.3
+                "food_name": "汉堡",
+                "calories": "约为1200大卡（或5024千焦）",
+                "estimation_basis": "识别出图片中的食物为一个汉堡..."
             },
             "session_id": "abc123",
             "method": "pure_llm",
-            "error": None
+            "error": None,
+            "food_name": "汉堡",
+            "calories": "约为1200大卡（或5024千焦）",
+            "estimation_basis": "识别出图片中的食物为一个汉堡..."
         }
     })
 

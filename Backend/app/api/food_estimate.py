@@ -335,13 +335,21 @@ async def analyze_food(
         
         # 注意：这里不再自动保存分析记录，改为由前端主动调用记录接口
         
+        # 从AI结果中提取关键字段
+        food_name = ai_result.get('food_name')
+        calories = ai_result.get('calories')
+        estimation_basis = ai_result.get('estimation_basis')
+        
         return AnalyzeResponse(
             success=True,
             message="分析完成",
             result=ai_result,
             session_id=session_id,
             method=analyze_request.method,
-            error=None
+            error=None,
+            food_name=food_name,
+            calories=calories,
+            estimation_basis=estimation_basis
         )
         
     except HTTPException:
