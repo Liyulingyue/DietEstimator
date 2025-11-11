@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.models.models import DietRecord
 from app.models.schemas import DietRecordResponse, DietRecordRequest
 
-router = APIRouter()
+router = APIRouter(prefix="/records", tags=["records"])
 
 
 @router.post("/add", response_model=DietRecordResponse)

@@ -134,7 +134,7 @@ export async function analyzeFood(
     });
 
     // 调用后端API
-    const response = await fetch(`${API_BASE_URL}/api/v1/ai/analyze`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/food_estimate/analyze`, {
       method: 'POST',
       credentials: 'include',
       body: formData,
@@ -166,7 +166,7 @@ export async function analyzeFood(
  */
 export async function getAvailableMethods(): Promise<any[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/ai/methods`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/methods`, {
       credentials: 'include',
     });
 

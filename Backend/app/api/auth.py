@@ -19,7 +19,7 @@ from app.api.auth_middleware import UserInfo, get_current_user, require_auth
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer(auto_error=False)
 
 # 密码哈希上下文 - 使用 argon2

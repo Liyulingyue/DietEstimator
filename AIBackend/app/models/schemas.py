@@ -29,8 +29,11 @@ class EstimateResponse(BaseModel):
     """热量估算响应模型"""
     success: bool = Field(..., description="是否成功")
     message: str = Field(..., description="响应消息")
-    result: Optional[Any] = Field(None, description="分析结果")
+    raw: Optional[Any] = Field(None, description="原始分析结果")
     error: Optional[str] = Field(None, description="错误信息")
+    calories: Optional[str] = Field(None, description="热量值")
+    food_name: Optional[str] = Field(None, description="食物名称")
+    reason: Optional[str] = Field(None, description="估算依据")
 
 class HealthCheckResponse(BaseModel):
     """健康检查响应模型"""

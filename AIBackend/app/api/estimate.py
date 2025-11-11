@@ -46,6 +46,35 @@ async def _validate_and_read_files(files: List[UploadFile], api_key: str):
 
     return image_bytes_list
 
+def _create_estimate_response(success: bool, message: str, result: Any = None, error: str = None) -> EstimateResponse:
+    """创建结构化的EstimateResponse"""
+    if success and result is not None:
+        # 处理成功的响应
+        if isinstance(result, dict):
+            # pure_llm返回的结构化结果
+            return EstimateResponse(
+                success=True,
+                message=message,
+                raw=result,
+                calories=result.get("calories"),
+                food_name=result.get("food_name"),
+                reason=result.get("estimation_basis")
+            )
+        else:
+            # 其他方法返回的字符串结果
+            return EstimateResponse(
+                success=True,
+                message=message,
+                raw=result
+            )
+    else:
+        # 处理失败的响应
+        return EstimateResponse(
+            success=False,
+            message=message,
+            error=error
+        )
+
 @router.post("", response_model=EstimateResponse)
 async def estimate_calories(
     files: List[UploadFile] = File(..., description="要分析的食物图片文件"),
@@ -101,7 +130,7 @@ async def estimate_calories(
         if request.method == AnalysisMethod.LLM_OCR_HYBRID.value:
             result = estimator_service.process_llm_ocr_hybrid(image_bytes_list, api_key)
         elif request.method == AnalysisMethod.PURE_LLM.value:
-            result = process_pure_llm(image_bytes_list, api_key)
+            result = process_pure_llm(image_bytes_list, request.api_key, request.model_url, request.model_name)
             # 处理pure_llm的结构化返回
             if isinstance(result, dict) and "error" in result:
                 return EstimateResponse(
@@ -116,20 +145,12 @@ async def estimate_calories(
         else:
             raise HTTPException(status_code=400, detail="不支持的分析方法")
         
-        return EstimateResponse(
-            success=True,
-            message="分析完成",
-            result=result
-        )
+        return _create_estimate_response(True, "分析完成", result)
         
     except HTTPException:
         raise
     except Exception as e:
-        return EstimateResponse(
-            success=False,
-            message="分析失败",
-            error=str(e)
-        )
+        return _create_estimate_response(False, "分析失败", error=str(e))
 
 @router.post("/llm_ocr_hybrid", response_model=EstimateResponse)
 async def estimate_llm_ocr_hybrid(
@@ -147,20 +168,12 @@ async def estimate_llm_ocr_hybrid(
         # 直接调用LLM-OCR混合处理
         result = estimator_service.process_llm_ocr_hybrid(image_bytes_list, request.api_key)
 
-        return EstimateResponse(
-            success=True,
-            message="分析完成",
-            result=result
-        )
+        return _create_estimate_response(True, "分析完成", result)
 
     except HTTPException:
         raise
     except Exception as e:
-        return EstimateResponse(
-            success=False,
-            message="分析失败",
-            error=str(e)
-        )
+        return _create_estimate_response(False, "分析失败", error=str(e))
 
 @router.post("/pure_llm", response_model=EstimateResponse)
 async def estimate_pure_llm(
@@ -176,30 +189,17 @@ async def estimate_pure_llm(
         image_bytes_list = await _validate_and_read_files(files, request.api_key)
 
         # 直接调用纯LLM处理
-        result = process_pure_llm(image_bytes_list, request.api_key)
+        result = process_pure_llm(image_bytes_list, request.api_key, request.model_url, request.model_name)
 
         # 处理结构化返回
         if isinstance(result, dict) and "error" in result:
-            return EstimateResponse(
-                success=False,
-                message="分析失败",
-                error=result["error"]
-            )
+            return _create_estimate_response(False, "分析失败", error=result["error"])
 
-        return EstimateResponse(
-            success=True,
-            message="分析完成",
-            result=result
-        )
-
+        return _create_estimate_response(True, "分析完成", result)
     except HTTPException:
         raise
     except Exception as e:
-        return EstimateResponse(
-            success=False,
-            message="分析失败",
-            error=str(e)
-        )
+        return _create_estimate_response(False, "分析失败", error=str(e))
 
 @router.post("/nutrition-table", response_model=EstimateResponse)
 async def estimate_nutrition_table(
@@ -217,20 +217,12 @@ async def estimate_nutrition_table(
         # 直接调用营养成分表处理
         result = estimator_service.process_nutrition_table(image_bytes_list, request.api_key)
 
-        return EstimateResponse(
-            success=True,
-            message="分析完成",
-            result=result
-        )
+        return _create_estimate_response(True, "分析完成", result)
 
     except HTTPException:
         raise
     except Exception as e:
-        return EstimateResponse(
-            success=False,
-            message="分析失败",
-            error=str(e)
-        )
+        return _create_estimate_response(False, "分析失败", error=str(e))
 
 @router.post("/food-portion", response_model=EstimateResponse)
 async def estimate_food_portion(
@@ -248,17 +240,9 @@ async def estimate_food_portion(
         # 直接调用食物份量检测处理
         result = estimator_service.process_food_portion(image_bytes_list, request.api_key)
 
-        return EstimateResponse(
-            success=True,
-            message="分析完成",
-            result=result
-        )
+        return _create_estimate_response(True, "分析完成", result)
 
     except HTTPException:
         raise
     except Exception as e:
-        return EstimateResponse(
-            success=False,
-            message="分析失败",
-            error=str(e)
-        )
+        return _create_estimate_response(False, "分析失败", error=str(e))

@@ -9,7 +9,7 @@ from app.models import models
 from app.models.schemas import GalleryShareCreate, GalleryShareResponse, GalleryShareListResponse
 from app.api.auth_middleware import get_current_user, UserInfo
 
-router = APIRouter()
+router = APIRouter(prefix="/gallery", tags=["gallery"])
 
 
 @router.post("/share", response_model=GalleryShareResponse)

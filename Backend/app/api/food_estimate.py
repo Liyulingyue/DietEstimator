@@ -34,7 +34,7 @@ def validate_analyze_request(
         call_preference=call_preference
     )
 
-router = APIRouter(prefix="/ai", tags=["ai"])
+router = APIRouter(prefix="/food_estimate", tags=["food_estimate"])
 logger = logging.getLogger(__name__)
 
 def _backend_url(path: str) -> str:

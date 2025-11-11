@@ -5,7 +5,7 @@ export const API_CONFIG = {
 
   // API 端点
   ENDPOINTS: {
-    SAVE_RECORD: '/api/v1/ai/save_record',
+    SAVE_RECORD: '/api/v1/food_estimate/save_record',
     // 可以在这里添加其他端点
   }
 };

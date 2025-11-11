@@ -425,7 +425,8 @@ def get_prompt_single_image_analysis():
 def get_prompt_multi_image_analysis(analysis_results):
     """生成多张图片综合分析的prompt"""
     example_dict = {
-        "总热量": "float，综合分析后的总热量，单位大卡",
+        "食物名称": "str，综合分析后的食物名称",
+        "热量": "float，综合分析后的热量，单位大卡",
         "估算依据": "str，综合分析的理由和计算过程"
     }
     
@@ -460,7 +461,7 @@ def get_prompt_multi_image_analysis(analysis_results):
 
 规则如下：
 1. 输出必须为标准JSON格式，所有key都用双引号包裹，不能有语法错误。
-2. 使用```json包裹输出内容。
+2. 使用```json```包裹输出内容。
 3. 不要在输出的json中增加注释。
 4. 估算依据要详细说明综合分析的思路和计算过程。
 

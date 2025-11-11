@@ -11,7 +11,7 @@ from ..utils.llm_helper import get_llm_answer, get_vl_llm_answer, parse_json_res
 from ..utils.prompt_helper import get_prompt_single_image_analysis, get_prompt_multi_image_analysis
 
 
-def process_pure_llm(image_files: List[bytes], api_key: str, model_url: str = None, model_name: str = None) -> Dict[str, Any]:
+def process_pure_llm(image_files: List[bytes], api_key: str, model_url: str, model_name: str) -> Dict[str, Any]:
     """
     纯LLM方案处理图片分析
 
@@ -80,8 +80,8 @@ def process_pure_llm(image_files: List[bytes], api_key: str, model_url: str = No
             if result.get("状态") == "成功":
                 total_calories = result.get("总热量", "未知")
                 total_reason = result.get("估算依据", "无说明")
-                # 从第一张图片获取食物名称作为代表
-                food_name = single_useful_results[0][1] if single_useful_results else "多种食物"
+                # 使用综合分析返回的食物名称
+                food_name = result.get("食物名称", "多种食物")
                 return {
                     "food_name": food_name,
                     "calories": total_calories,
@@ -146,8 +146,8 @@ def _summarize_multi_image_calories(single_results: List[tuple], api_key: str, m
         # 解析JSON响应
         result = parse_json_result(response)
 
-        if result and "总热量" in result:
-            return {"状态": "成功", "总热量": result["总热量"], "估算依据": result.get("估算依据", "")}
+        if result and "热量" in result:
+            return {"状态": "成功", "食物名称": result.get("食物名称", "多种食物"), "热量": result["热量"], "估算依据": result.get("估算依据", "")}
         else:
             return {"状态": "失败", "错误信息": "无法综合分析多张图片"}
 

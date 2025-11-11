@@ -16,7 +16,7 @@ from app.models.schemas import TestConnectionRequest, TestConnectionResponse
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(prefix="/connection", tags=["connection"])
 
 def _backend_url(path: str) -> str:
     return f"{settings.AI_BACKEND_URL.rstrip('/')}{path}"
