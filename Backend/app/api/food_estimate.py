@@ -338,7 +338,7 @@ async def analyze_food(
         # 从AI结果中提取关键字段
         food_name = ai_result.get('food_name')
         calories = ai_result.get('calories')
-        estimation_basis = ai_result.get('estimation_basis')
+        reason = ai_result.get('reason')
         
         return AnalyzeResponse(
             success=True,
@@ -349,7 +349,7 @@ async def analyze_food(
             error=None,
             food_name=food_name,
             calories=calories,
-            estimation_basis=estimation_basis
+            reason=reason
         )
         
     except HTTPException:

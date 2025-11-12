@@ -80,29 +80,37 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(truncated)
 
 
-def authenticate_user(db: Session, username: str, password: str) -> User:
-    """认证用户，如果用户不存在则自动创建"""
+def authenticate_user(db: Session, username: str, password: str) -> tuple[User, bool]:
+    """
+    认证用户，如果用户不存在则自动创建
+    返回: (User对象, 是否新创建的用户)
+    """
     user = db.query(User).filter(User.username == username).first()
     if not user:
         # 用户不存在，自动创建新用户
         logger.info(f"用户 {username} 不存在，自动创建新用户")
-        hashed_password = get_password_hash(password)
-        new_user = User(
-            username=username,
-            email=f"{username}@example.com",  # 临时email
-            hashed_password=hashed_password,
-            server_credits=100.0  # 新用户默认100个服务器调用点
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        logger.info(f"新用户 {username} 创建成功，ID: {new_user.id}")
-        return new_user
+        try:
+            hashed_password = get_password_hash(password)
+            new_user = User(
+                username=username,
+                email=f"{username}@example.com",  # 临时email
+                hashed_password=hashed_password,
+                server_credits=100.0  # 新用户默认100个服务器调用点
+            )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            logger.info(f"新用户 {username} 创建成功，ID: {new_user.id}")
+            return new_user, True  # 返回新用户和True标记
+        except Exception as e:
+            db.rollback()
+            logger.error(f"创建新用户失败: {e}")
+            raise
 
     # 用户存在，验证密码
     if not verify_password(password, user.hashed_password):
-        return None
-    return user
+        return None, False
+    return user, False  # 返回现有用户和False标记
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -115,7 +123,7 @@ async def login(
     """用户登录（支持自动注册）"""
     try:
         # 从数据库验证用户，如果不存在则自动创建
-        user = authenticate_user(db, request.username, request.password)
+        user, is_new_user = authenticate_user(db, request.username, request.password)
         if not user:
             logger.warning(f"用户 {request.username} 密码验证失败")
             raise HTTPException(status_code=401, detail="密码错误")
@@ -142,11 +150,13 @@ async def login(
             max_age=3600 * 24 * 7  # 7天
         )
 
-        # 确定是新用户还是现有用户登录
-        is_new_user = user.created_at == user.updated_at  # 简单判断是否刚创建
-        login_message = "欢迎回来！" if not is_new_user else "欢迎加入！新用户已自动注册。"
+        # 根据是否新用户生成不同的提示信息
+        if is_new_user:
+            login_message = "欢迎加入！新账号已自动创建并登录成功。"
+        else:
+            login_message = "欢迎回来！"
 
-        logger.info(f"用户 {request.username} 登录成功，session_id: {session_id}")
+        logger.info(f"用户 {request.username} 登录成功（{'新用户' if is_new_user else '现有用户'}），session_id: {session_id}")
 
         return LoginResponse(
             success=True,

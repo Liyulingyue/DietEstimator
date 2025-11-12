@@ -84,25 +84,9 @@ export default function Analyse() {
     }
     
     // 从分析结果中提取food_name和calories的默认值
-    const result = analysisResult.result?.result || analysisResult.result || {};
-    let defaultFoodName = '';
-    let defaultCalories = null;
-    
-    // 查找food_name
-    for (const [key, value] of Object.entries(result)) {
-      if (key === 'food_name' || (key.toLowerCase().includes('food') && key.toLowerCase().includes('name'))) {
-        defaultFoodName = String(value);
-        break;
-      }
-    }
-    
-    // 查找calories
-    for (const [key, value] of Object.entries(result)) {
-      if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-        defaultCalories = extractNumber(value as string | number | null | undefined);
-        break;
-      }
-    }
+    const result = analysisResult.result;
+    const defaultFoodName = result?.food_name || '';
+    const defaultCalories = result?.calories ? extractNumber(result.calories) : null;
     
     // 设置编辑状态
     setEditingFoodName(defaultFoodName);
@@ -130,22 +114,14 @@ export default function Analyse() {
       const values = await form.validateFields();
       
       // 准备要保存的数据
-      const resultToSave = { ...analysisResult.result.result };
+      const resultToSave = { ...analysisResult.result };
       
-      // 更新food_name和calories到结构化数据中
-      if (resultToSave && typeof resultToSave === 'object') {
-        // 更新结构化数据中的food_name和calories
-        for (const [key, value] of Object.entries(resultToSave)) {
-          if (key === 'food_name' || (key.toLowerCase().includes('food') && key.toLowerCase().includes('name'))) {
-            resultToSave[key] = values.food_name;
-          } else if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-            resultToSave[key] = values.calories;
-          }
-        }
-      }
-      
-      // 调用后端保存记录接口
-      const response = await fetch(getApiUrl('/api/v1/ai/save_record'), {
+      // 更新food_name和calories
+      if (resultToSave) {
+        resultToSave.food_name = values.food_name;
+        resultToSave.calories = values.calories;
+      }      // 调用后端保存记录接口
+      const response = await fetch(getApiUrl('/api/v1/food_estimate/save_record'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,241 +170,48 @@ export default function Analyse() {
     // 根据不同类型的结果进行渲染
     return (
       <div style={{ marginTop: '16px' }}>
-        {/* 检查是否是结构化数据（dict） */}
-        {typeof result.result === 'object' && result.result !== null ? (
-          // 动态构造结构化数据显示
-          <div>
-            {Object.entries(result.result).map(([key, value]: [string, any]) => {
-              // 根据key类型决定显示方式和样式
-              if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-                // 热量信息 - 通用样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                      {String(value)} kcal
-                    </Text>
-                  </div>
-                );
-              } else if (key === 'food_name' || key.toLowerCase().includes('food') && key.toLowerCase().includes('name')) {
-                // 食物名称 - 通用样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                      {String(value)}
-                    </Text>
-                  </div>
-                );
-              } else if (key === 'estimation_basis' || key.toLowerCase().includes('basis') || key.toLowerCase().includes('reason')) {
-                // 估算依据 - 文本样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                      {String(value)}
-                    </Text>
-                  </div>
-                );
-              } else if (key === 'nutrition_info' || key.toLowerCase().includes('nutrition')) {
-                // 营养成分 - 网格样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                      gap: '12px',
-                    }}>
-                      {typeof value === 'object' && value !== null ?
-                        Object.entries(value).map(([nutrientKey, nutrientValue]: [string, any]) => (
-                          <div
-                            key={nutrientKey}
-                            style={{
-                              background: '#e3f2fd',
-                              padding: '12px',
-                              borderRadius: '8px',
-                              border: '1px solid #90caf9',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                              {nutrientKey}
-                            </Text>
-                            <Text strong style={{ fontSize: '14px', color: '#1565c0' }}>
-                              {String(nutrientValue)}
-                            </Text>
-                          </div>
-                        )) : (
-                          <div style={{
-                            background: '#e3f2fd',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            border: '1px solid #90caf9',
-                            textAlign: 'center',
-                          }}>
-                            <Text strong style={{ fontSize: '14px', color: '#1565c0' }}>
-                              {String(value)}
-                            </Text>
-                          </div>
-                        )
-                      }
-                    </div>
-                  </div>
-                );
-              } else if (key === 'food_description' || key.toLowerCase().includes('description')) {
-                // 食物描述 - 文本样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                      {String(value)}
-                    </Text>
-                  </div>
-                );
-              } else {
-                // 其他字段 - 通用样式
-                return (
-                  <div key={key} style={{ marginBottom: '16px' }}>
-                    <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                      {key}
-                    </Title>
-                    {typeof value === 'object' && value !== null ? (
-                      <div style={{
-                        background: '#f5f5f5',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px solid #e0e0e0',
-                        fontFamily: 'monospace',
-                        fontSize: '12px'
-                      }}>
-                        {JSON.stringify(value, null, 2)}
-                      </div>
-                    ) : (
-                      <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                        {String(value)}
-                      </Text>
-                    )}
-                  </div>
-                );
-              }
-            })}
-          </div>
-        ) : typeof result.result === 'string' ? (
-          // 如果是字符串，直接显示文本内容
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '8px',
-            border: '1px solid #e0e0e0',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.6'
-          }}>
-            <Text style={{
-              color: '#424242',
-              fontSize: '15px',
-            }}>
-              {result.result}
+        {/* 食物名称 */}
+        {result.food_name && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              🍽️ 食物名称
+            </Title>
+            <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
+              {result.food_name}
             </Text>
           </div>
-        ) : (
-          // 其他结构化数据，按原来的方式显示
-          <>
-            {/* 食物描述 */}
-            {result.result?.food_description && (
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                  📋 食物描述
-                </Title>
-                <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                  {result.result.food_description}
-                </Text>
-              </div>
-            )}
-
-            {/* 热量信息 */}
-            {(result.result?.calories || result.result?.calorie_estimate) && (
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5} style={{ color: '#d32f2f', marginBottom: '8px' }}>
-                  🔥 热量估算
-                </Title>
-                <div style={{
-                  background: 'linear-gradient(135deg, #fff3e0, #ffe0b2)',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #ffb74d',
-                }}>
-                  <Text strong style={{ fontSize: '18px', color: '#e65100' }}>
-                    {result.result.calories || result.result.calorie_estimate} kcal
-                  </Text>
-                </div>
-              </div>
-            )}
-
-            {/* 估算依据 */}
-            {result.result?.estimation_basis && (
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                  📝 估算依据
-                </Title>
-                <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
-                  {result.result.estimation_basis}
-                </Text>
-              </div>
-            )}
-
-            {/* 营养成分 */}
-            {result.result?.nutrition_info && (
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-                  📊 营养成分
-                </Title>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                  gap: '12px',
-                }}>
-                  {Object.entries(result.result.nutrition_info).map(([key, value]: [string, any]) => (
-                    <div 
-                      key={key}
-                      style={{
-                        background: '#e3f2fd',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: '1px solid #90caf9',
-                        textAlign: 'center',
-                      }}
-                    >
-                      <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                        {key}
-                      </Text>
-                      <Text strong style={{ fontSize: '14px', color: '#1565c0' }}>
-                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      </Text>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
         )}
 
-        {/* 原始JSON数据 */}
-        {result.result?.raw_response && (
+        {/* 热量信息 */}
+        {result.calories && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              🔥 热量
+            </Title>
+            <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6' }}>
+              {result.calories} kcal
+            </Text>
+          </div>
+        )}
+
+        {/* 原因 */}
+        {result.reason && (
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
+              📝 原因
+            </Title>
+            <Text style={{ color: '#424242', display: 'block', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+              {result.reason}
+            </Text>
+          </div>
+        )}
+
+        {/* 如果result.result存在且是对象，显示原始AI响应 */}
+        {result.result && typeof result.result === 'object' && (
           <div style={{ marginTop: '20px' }}>
             <Divider />
             <Title level={5} style={{ color: '#1565c0', marginBottom: '8px' }}>
-              📄 原始数据
+              🤖 AI原始响应
             </Title>
             <div style={{
               background: '#f5f5f5',
@@ -447,14 +230,12 @@ export default function Analyse() {
                 type="text"
                 size="small"
                 icon={<CopyOutlined />}
-                onClick={() => copyToClipboard(result.result.raw_response)}
+                onClick={() => copyToClipboard(JSON.stringify(result.result, null, 2))}
                 style={{ position: 'absolute', right: '8px', top: '8px' }}
               >
                 复制
               </Button>
-              {typeof result.result.raw_response === 'string' 
-                ? result.result.raw_response 
-                : JSON.stringify(result.result.raw_response, null, 2)}
+              {JSON.stringify(result.result, null, 2)}
             </div>
           </div>
         )}

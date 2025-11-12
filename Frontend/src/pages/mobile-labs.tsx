@@ -13,17 +13,17 @@ export default function MobileLabs() {
 
   const experiments = [
     {
-      key: 'gallery-share',
-      title: '画廊',
-      description: '在画廊中浏览社区分享的餐食，并快速发布自己的健康餐图片。',
-      icon: PictureOutlined,
-      gradient: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)',
-      bgGradient: 'linear-gradient(135deg, #fff0f6 0%, #ffd6e7 100%)',
-      color: '#eb2f96',
-      tag: { text: 'Beta', color: 'magenta' },
+      key: 'bowel-recognition',
+      title: '排便识别',
+      description: '识别并记录排便情况，结合健康指标提供消化状态分析，帮助及时发现异常。',
+      icon: MedicineBoxOutlined,
+      gradient: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)',
+      bgGradient: 'linear-gradient(135deg, #fff2f0 0%, #ffd6d5 100%)',
+      color: '#ff4d4f',
+      tag: { text: 'Beta', color: 'red' },
       progress: null,
       available: true,
-      path: '/app/gallery'
+      path: '/app/bowel-recognition'
     },
     {
       key: 'weight',
@@ -48,19 +48,6 @@ export default function MobileLabs() {
       tag: { text: 'Coming Soon', color: 'green' },
       progress: 75,
       available: false
-    },
-    {
-      key: 'bowel-recognition',
-      title: '排便识别',
-      description: '识别并记录排便情况，结合健康指标提供消化状态分析，帮助及时发现异常。',
-      icon: MedicineBoxOutlined,
-      gradient: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)',
-      bgGradient: 'linear-gradient(135deg, #fff2f0 0%, #ffd6d5 100%)',
-      color: '#ff4d4f',
-      tag: { text: 'Beta', color: 'red' },
-      progress: null,
-      available: true,
-      path: '/app/bowel-recognition'
     },
     {
       key: 'nutrition',

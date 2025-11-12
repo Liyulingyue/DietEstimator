@@ -62,9 +62,26 @@ async def share_gallery_item(
         db.commit()
         db.refresh(new_share)
 
+        # 获取用户名
+        user_name = None
+        if user_id:
+            try:
+                user_id_int = int(user_id)
+                user = db.query(models.User).filter(models.User.id == user_id_int).first()
+                if user:
+                    user_name = user.username
+            except (ValueError, TypeError):
+                pass  # 如果转换失败，保持user_name为None
+
+        # 判断是否为当前用户
+        is_current_user = False
+        if current_user and current_user.is_logged_in and user_id == current_user.user_id:
+            is_current_user = True
+
         return GalleryShareResponse(
             id=new_share.id,
-            user_id=new_share.user_id,
+            user_name=user_name,
+            is_current_user=is_current_user,
             image_base64=new_share.image_base64,
             analysis_result=new_share.analysis_result,
             created_at=new_share.created_at
@@ -82,6 +99,7 @@ async def share_gallery_item(
 async def get_gallery_shares(
     skip: int = 0,
     limit: int = 20,
+    current_user: UserInfo = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -104,15 +122,26 @@ async def get_gallery_shares(
         # 转换为响应格式
         share_responses = []
         for share in shares:
-            # 解析分析结果
-            try:
-                analysis_data = json.loads(share.analysis_result)
-            except:
-                analysis_data = {"food_name": "未知食物", "calories": 0}
+            # 获取用户名
+            username = None
+            if share.user_id:
+                try:
+                    user_id_int = int(share.user_id)
+                    user = db.query(models.User).filter(models.User.id == user_id_int).first()
+                    if user:
+                        username = user.username
+                except (ValueError, TypeError):
+                    pass  # 如果转换失败，保持username为None
+
+            # 判断是否为当前用户
+            is_current_user = False
+            if current_user and current_user.is_logged_in and share.user_id == current_user.user_id:
+                is_current_user = True
 
             share_responses.append(GalleryShareResponse(
                 id=share.id,
-                user_id=share.user_id,
+                user_name=username,
+                is_current_user=is_current_user,
                 image_base64=share.image_base64,
                 analysis_result=share.analysis_result,
                 created_at=share.created_at

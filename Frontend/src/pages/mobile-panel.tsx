@@ -31,6 +31,7 @@ export default function MobilePanel() {
     consumed: 0,
     target: getDietGoal(),
     percentage: 0,
+    actualPercentage: 0, // 实际百分比，可能超过100%
     meals: 0
   });
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -121,13 +122,15 @@ export default function MobilePanel() {
 
         // 获取最新的饮食目标
         const currentTarget = getDietGoal();
-        const percentage = Math.min(Math.round((totalCalories / currentTarget) * 100), 100);
+        const actualPercentage = Math.round((totalCalories / currentTarget) * 100);
+        const displayPercentage = Math.min(actualPercentage, 100); // 进度条最大显示100%
         
         setTodayData(prev => ({
           ...prev,
           consumed: totalCalories,
           target: currentTarget,
-          percentage: percentage,
+          percentage: displayPercentage,
+          actualPercentage: actualPercentage, // 实际百分比，可以超过100%
           meals: filteredRecords.length
         }));
       }
@@ -553,7 +556,7 @@ export default function MobilePanel() {
       }
 
       // 然后添加新记录
-      const addResponse = await fetch(`${apiUrl}/api/v1/ai/save_record`, {
+      const addResponse = await fetch(`${apiUrl}/api/v1/food_estimate/save_record`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -748,14 +751,28 @@ export default function MobilePanel() {
             
             <Progress 
               percent={todayData.percentage} 
-              strokeColor={{
-                '0%': '#722ed1',
-                '100%': '#9254de',
-              }}
+              strokeColor={
+                todayData.actualPercentage > 100 
+                  ? {
+                      '0%': '#ff4d4f',
+                      '100%': '#ff7875',
+                    }
+                  : {
+                      '0%': '#722ed1',
+                      '100%': '#9254de',
+                    }
+              }
               trailColor="#f0f0f0"
               size={{ height: 10 }}
               showInfo={true}
-              format={(percent) => `${percent}%`}
+              format={() => {
+                const displayValue = todayData.actualPercentage;
+                return (
+                  <span style={{ color: displayValue > 100 ? '#ff4d4f' : '#722ed1' }}>
+                    {displayValue}%
+                  </span>
+                );
+              }}
               style={{ marginBottom: '12px' }}
             />
 

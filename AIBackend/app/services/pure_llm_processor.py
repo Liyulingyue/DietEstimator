@@ -50,7 +50,7 @@ def process_pure_llm(image_files: List[bytes], api_key: str, model_url: str, mod
         for i, result in enumerate(single_results):
             if result.get("状态") == "成功":
                 food_name = result.get("食物名称", "未知食物")
-                calories = result.get("热量", "未知")
+                calories = result.get("热量", 0)  # float类型，单位大卡
                 reason = result.get("估算依据", "无说明")
                 single_useful_results.append((i + 1, food_name, calories, reason))
             else:
@@ -71,20 +71,20 @@ def process_pure_llm(image_files: List[bytes], api_key: str, model_url: str, mod
             (index, food_name, calories, reason) = single_useful_results[0]
             return {
                 "food_name": food_name,
-                "calories": calories,
+                "calories": calories,  # float类型，单位大卡
                 "estimation_basis": reason
             }
         else:
             # 多张图片的情况，综合分析
             result = _summarize_multi_image_calories(single_useful_results, api_key, model_url, model_name)
             if result.get("状态") == "成功":
-                total_calories = result.get("总热量", "未知")
+                total_calories = result.get("热量", 0)  # float类型，单位大卡
                 total_reason = result.get("估算依据", "无说明")
                 # 使用综合分析返回的食物名称
                 food_name = result.get("食物名称", "多种食物")
                 return {
                     "food_name": food_name,
-                    "calories": total_calories,
+                    "calories": total_calories,  # float类型，单位大卡
                     "estimation_basis": total_reason
                 }
             else:
@@ -117,7 +117,7 @@ def _analyze_single_image_calories(image_path: str, api_key: str, model_url: str
             return {
                 "状态": "成功",
                 "食物名称": result.get("食物名称", "未知食物"),
-                "热量": result["热量"],
+                "热量": result["热量"],  # float类型，单位大卡
                 "估算依据": result.get("估算依据", "")
             }
         else:

@@ -1,34 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload, Button, Modal, Image, message, Card, Typography, Progress, Tag, Divider, Space } from 'antd';
-import { UploadOutlined, CameraOutlined, DeleteOutlined, ExperimentOutlined, MedicineBoxOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Upload, Button, Modal, Image, message, Card, Typography } from 'antd';
+import { UploadOutlined, CameraOutlined, DeleteOutlined, MedicineBoxOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
+import { analyzeBowel } from '../api';
+import type { BowelAnalysisResponse } from '../api';
+import { getSessionId } from '../utils/api';
 
 const { Title, Text, Paragraph } = Typography;
-
-interface BowelAnalysisResult {
-  success: boolean;
-  message: string;
-  result?: {
-    type: 'normal' | 'constipation' | 'diarrhea' | 'abnormal';
-    confidence: number;
-    description: string;
-    recommendations: string[];
-    health_score: number;
-    indicators: {
-      color: string;
-      shape: string;
-      consistency: string;
-      frequency?: string;
-    };
-  };
-}
 
 export default function BowelRecognition() {
   const [images, setImages] = useState<string[]>([]);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<BowelAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<BowelAnalysisResponse | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -44,7 +29,6 @@ export default function BowelRecognition() {
       streamRef.current = null;
     }
     if (videoRef.current) {
-      // @ts-ignore
       videoRef.current.srcObject = null;
     }
   };
@@ -54,7 +38,6 @@ export default function BowelRecognition() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       streamRef.current = stream;
       if (videoRef.current) {
-        // @ts-ignore
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
       }
@@ -113,76 +96,40 @@ export default function BowelRecognition() {
     const hide = message.loading('正在分析排便情况...', 0);
 
     try {
-      // 模拟AI分析过程
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // 将base64图片转换为File对象
+      const files: File[] = [];
+      for (let i = 0; i < images.length; i++) {
+        const imageData = images[i];
+        // 从base64字符串创建File对象
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        const file = new File([blob], `bowel-image-${i + 1}.jpg`, { type: 'image/jpeg' });
+        files.push(file);
+      }
 
-      // 模拟分析结果（实际应该调用后端API）
-      const mockResult: BowelAnalysisResult = {
-        success: true,
-        message: '分析完成',
-        result: {
-          type: Math.random() > 0.7 ? 'constipation' : Math.random() > 0.5 ? 'diarrhea' : 'normal',
-          confidence: Math.floor(Math.random() * 30) + 70, // 70-100%
-          description: '基于AI视觉分析，结合颜色、形状和稠度等指标进行综合评估。',
-          recommendations: [
-            '保持规律作息，保证充足睡眠',
-            '增加膳食纤维摄入，多吃蔬菜水果',
-            '适量运动，促进肠道蠕动',
-            '保持心情舒畅，避免过度紧张'
-          ],
-          health_score: Math.floor(Math.random() * 40) + 60, // 60-100分
-          indicators: {
-            color: '棕黄色',
-            shape: '条状',
-            consistency: '软便',
-            frequency: '每日1-2次'
-          }
-        }
-      };
+      // 调用API进行分析
+      const result = await analyzeBowel({
+        files: files,
+        session_id: getSessionId(),
+        method: 'pure_llm',
+        call_preference: 'server' // 优先使用服务器配置
+      });
 
-      setAnalysisResult(mockResult);
+      setAnalysisResult(result);
       hide();
-      message.success('✅ 分析完成！');
+
+      if (result.success) {
+        message.success('✅ 分析完成！');
+      } else {
+        message.error(`❌ 分析失败: ${result.error || result.message}`);
+      }
 
     } catch (error) {
       hide();
-      message.error(`分析过程中发生错误: ${error}`);
       console.error('分析异常:', error);
+      message.error(`分析过程中发生错误: ${error instanceof Error ? error.message : '未知错误'}`);
     } finally {
       setAnalyzing(false);
-    }
-  };
-
-  const getTypeInfo = (type: string) => {
-    switch (type) {
-      case 'normal':
-        return {
-          label: '正常',
-          color: 'success',
-          icon: CheckCircleOutlined,
-          description: '排便情况正常，继续保持良好的生活习惯'
-        };
-      case 'constipation':
-        return {
-          label: '便秘',
-          color: 'warning',
-          icon: CloseCircleOutlined,
-          description: '可能存在便秘情况，建议调整饮食和生活习惯'
-        };
-      case 'diarrhea':
-        return {
-          label: '腹泻',
-          color: 'error',
-          icon: CloseCircleOutlined,
-          description: '可能存在腹泻情况，注意补水和饮食卫生'
-        };
-      default:
-        return {
-          label: '异常',
-          color: 'default',
-          icon: CloseCircleOutlined,
-          description: '排便情况异常，建议咨询专业医生'
-        };
     }
   };
 
@@ -196,7 +143,7 @@ export default function BowelRecognition() {
         {/* 顶部标题栏 */}
         <PageHeader
           title={<><MedicineBoxOutlined style={{ marginRight: '8px' }} />排便识别</>}
-          description="智能分析排便情况，提供健康建议"
+          description="智能分析排便情况，提供健康建议，照片仅用于AI分析，不会存储在服务器上"
           background="linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%)"
           titleSize={24}
           descSize={14}
@@ -205,7 +152,7 @@ export default function BowelRecognition() {
 
         <div style={{ padding: '0 16px 20px 16px' }}>
           {/* 说明卡片 */}
-          <Card
+          {/* <Card
             style={{
               borderRadius: '16px',
               border: 'none',
@@ -230,7 +177,7 @@ export default function BowelRecognition() {
                 </Text>
               </div>
             </div>
-          </Card>
+          </Card> */}
 
           {/* 图片上传区域 */}
           <Card
@@ -424,150 +371,167 @@ export default function BowelRecognition() {
           </Card>
 
           {/* 分析结果 */}
-          {analysisResult && analysisResult.result && (
-            <Card
-              style={{
-                borderRadius: '20px',
-                border: 'none',
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-                marginBottom: '20px'
-              }}
-              styles={{ body: { padding: '24px' } }}
-            >
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <Title level={3} style={{ color: '#262626', marginBottom: '8px' }}>
-                  分析结果
-                </Title>
-                <Text style={{ color: '#8c8c8c' }}>
-                  基于AI视觉分析和健康指标评估
-                </Text>
-              </div>
+          <Card
+            style={{
+              borderRadius: '20px',
+              border: 'none',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+              marginBottom: '20px'
+            }}
+            styles={{ body: { padding: '24px' } }}
+          >
+            <div style={{ marginBottom: '24px' }}>
+              <Title level={3} style={{ color: '#262626', marginBottom: '8px' }}>
+                分析结果
+              </Title>
+            </div>
 
-              {/* 健康评分 */}
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div style={{
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 16px',
-                  boxShadow: '0 8px 24px rgba(255, 77, 79, 0.3)'
+            {/* 分析条目 */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* 颜色 */}
+              <div style={{
+                background: 'white',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <Text strong style={{
+                  fontSize: '14px',
+                  color: '#262626',
+                  display: 'block',
+                  marginBottom: '8px'
                 }}>
-                  <Text style={{ fontSize: '32px', fontWeight: '700', color: 'white' }}>
-                    {analysisResult.result.health_score}
-                  </Text>
-                  <Text style={{ fontSize: '14px', color: 'white', opacity: 0.9 }}>
-                    健康评分
-                  </Text>
-                </div>
-                <Progress
-                  type="circle"
-                  percent={analysisResult.result.health_score}
-                  strokeColor="#ff4d4f"
-                  trailColor="#f0f0f0"
-                  width={80}
-                  strokeWidth={8}
-                  format={() => ''}
-                />
-              </div>
-
-              {/* 排便类型 */}
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <Tag
-                    color={getTypeInfo(analysisResult.result.type).color}
-                    style={{
-                      fontSize: '16px',
-                      padding: '6px 16px',
-                      borderRadius: '20px'
-                    }}
-                  >
-                    {getTypeInfo(analysisResult.result.type).label}
-                  </Tag>
-                </div>
-                <Text style={{ fontSize: '14px', color: '#595959', display: 'block', textAlign: 'center' }}>
-                  {getTypeInfo(analysisResult.result.type).description}
+                  🎨 颜色
                 </Text>
-              </div>
-
-              <Divider />
-
-              {/* 详细指标 */}
-              <div style={{ marginBottom: '24px' }}>
-                <Title level={4} style={{ color: '#262626', marginBottom: '16px' }}>
-                  排便指标分析
-                </Title>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(2, 1fr)',
-                  gap: '16px'
+                <Paragraph style={{
+                  color: '#595959',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  margin: 0
                 }}>
-                  <Card size="small" style={{ borderRadius: '12px' }}>
-                    <Text strong style={{ fontSize: '14px', color: '#262626' }}>颜色</Text>
-                    <br />
-                    <Text style={{ color: '#595959' }}>{analysisResult.result.indicators.color}</Text>
-                  </Card>
-                  <Card size="small" style={{ borderRadius: '12px' }}>
-                    <Text strong style={{ fontSize: '14px', color: '#262626' }}>形状</Text>
-                    <br />
-                    <Text style={{ color: '#595959' }}>{analysisResult.result.indicators.shape}</Text>
-                  </Card>
-                  <Card size="small" style={{ borderRadius: '12px' }}>
-                    <Text strong style={{ fontSize: '14px', color: '#262626' }}>稠度</Text>
-                    <br />
-                    <Text style={{ color: '#595959' }}>{analysisResult.result.indicators.consistency}</Text>
-                  </Card>
-                  {analysisResult.result.indicators.frequency && (
-                    <Card size="small" style={{ borderRadius: '12px' }}>
-                      <Text strong style={{ fontSize: '14px', color: '#262626' }}>频率</Text>
-                      <br />
-                      <Text style={{ color: '#595959' }}>{analysisResult.result.indicators.frequency}</Text>
-                    </Card>
-                  )}
-                </div>
+                  {analysisResult?.color || '暂无'}
+                </Paragraph>
               </div>
 
-              <Divider />
+              {/* 份量 */}
+              <div style={{
+                background: 'white',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <Text strong style={{
+                  fontSize: '14px',
+                  color: '#262626',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  📏 份量
+                </Text>
+                <Paragraph style={{
+                  color: '#595959',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  margin: 0
+                }}>
+                  {analysisResult?.quantity || '暂无'}
+                </Paragraph>
+              </div>
 
-              {/* AI分析描述 */}
-              <div style={{ marginBottom: '24px' }}>
-                <Title level={4} style={{ color: '#262626', marginBottom: '12px' }}>
-                  AI分析说明
-                </Title>
-                <Text style={{ color: '#595959', lineHeight: '1.6' }}>
-                  {analysisResult.result.description}
+              {/* 形态 */}
+              <div style={{
+                background: 'white',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <Text strong style={{
+                  fontSize: '14px',
+                  color: '#262626',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  🔷 形态
+                </Text>
+                <Paragraph style={{
+                  color: '#595959',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  margin: 0
+                }}>
+                  {analysisResult?.shape || '暂无'}
+                </Paragraph>
+              </div>
+
+              {/* 健康点评 */}
+              <div style={{
+                background: 'white',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <Text strong style={{
+                  fontSize: '14px',
+                  color: '#262626',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  💬 健康点评
+                </Text>
+                <Paragraph style={{
+                  color: '#595959',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  margin: 0
+                }}>
+                  {analysisResult?.health_comment || '暂无'}
+                </Paragraph>
+              </div>
+
+              {/* 分析依据 */}
+              <div style={{
+                background: 'white',
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid #f0f0f0'
+              }}>
+                <Text strong style={{
+                  fontSize: '14px',
+                  color: '#262626',
+                  display: 'block',
+                  marginBottom: '8px'
+                }}>
+                  📋 分析依据
+                </Text>
+                <Paragraph style={{
+                  color: '#595959',
+                  fontSize: '14px',
+                  lineHeight: '1.8',
+                  margin: 0,
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {analysisResult?.analysis_basis || '暂无'}
+                </Paragraph>
+              </div>
+            </div>
+
+            {/* 只有当有分析结果时才显示成功状态 */}
+            {analysisResult && analysisResult.success && (
+              <div style={{
+                marginTop: '24px',
+                padding: '16px',
+                background: 'linear-gradient(135deg, #f6ffed, #d9f7be)',
+                borderRadius: '12px',
+                border: '1px solid #b7eb8f',
+                textAlign: 'center'
+              }}>
+                <CheckCircleOutlined style={{ fontSize: '24px', color: '#52c41a', marginBottom: '8px' }} />
+                <Text style={{ fontSize: '16px', color: '#262626', fontWeight: '500' }}>
+                  分析完成！请根据以上结果关注肠道健康。
                 </Text>
               </div>
-
-              {/* 健康建议 */}
-              <div>
-                <Title level={4} style={{ color: '#262626', marginBottom: '16px' }}>
-                  健康建议
-                </Title>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {analysisResult.result.recommendations.map((recommendation, index) => (
-                    <Card
-                      key={index}
-                      size="small"
-                      style={{
-                        borderRadius: '12px',
-                        background: 'linear-gradient(135deg, #f6ffed, #d9f7be)'
-                      }}
-                    >
-                      <Space align="start">
-                        <CheckCircleOutlined style={{ color: '#52c41a', marginTop: '2px' }} />
-                        <Text style={{ color: '#262626' }}>{recommendation}</Text>
-                      </Space>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
+            )}
+          </Card>
         </div>
 
         {/* 相机模态框 */}

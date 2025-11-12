@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from pydantic import BaseModel, EmailStr, ConfigDict
 from enum import Enum
 
@@ -128,8 +128,8 @@ class AnalyzeResponse(BaseModel):
     method: str
     error: Optional[str] = None
     food_name: Optional[str] = None
-    calories: Optional[str] = None
-    estimation_basis: Optional[str] = None
+    calories: Optional[Union[float, str]] = None  # 支持float(大卡)或str格式
+    reason: Optional[str] = None
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -137,21 +137,57 @@ class AnalyzeResponse(BaseModel):
             "message": "分析完成",
             "result": {
                 "food_name": "汉堡",
-                "calories": "约为1200大卡（或5024千焦）",
-                "estimation_basis": "识别出图片中的食物为一个汉堡..."
+                "calories": 1200.0,
+                "reason": "识别出图片中的食物为一个汉堡..."
             },
             "session_id": "abc123",
             "method": "pure_llm",
             "error": None,
             "food_name": "汉堡",
-            "calories": "约为1200大卡（或5024千焦）",
-            "estimation_basis": "识别出图片中的食物为一个汉堡..."
+            "calories": 1200.0,
+            "reason": "识别出图片中的食物为一个汉堡..."
+        }
+    })
+
+
+class BowelAnalyzeResponse(BaseModel):
+    """粪便分析响应模型"""
+    success: bool
+    message: str
+    result: Optional[dict] = None
+    session_id: Optional[str] = None
+    method: str
+    error: Optional[str] = None
+    color: Optional[str] = None
+    quantity: Optional[str] = None
+    shape: Optional[str] = None
+    health_comment: Optional[str] = None
+    analysis_basis: Optional[str] = None
+
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "success": True,
+            "message": "分析完成",
+            "result": {
+                "color": "黄褐色",
+                "quantity": "适中",
+                "shape": "条状",
+                "health_comment": "粪便颜色、形态、份量均在正常范围内，肠道健康状况良好",
+                "analysis_basis": "观察到粪便呈黄褐色，形态为条状，份量适中..."
+            },
+            "session_id": "abc123",
+            "method": "pure_llm",
+            "error": None,
+            "color": "黄褐色",
+            "quantity": "适中",
+            "shape": "条状",
+            "health_comment": "粪便颜色、形态、份量均在正常范围内，肠道健康状况良好",
+            "analysis_basis": "观察到粪便呈黄褐色，形态为条状，份量适中..."
         }
     })
 
 
 class GalleryShareBase(BaseModel):
-    user_id: Optional[str] = None  # 可为空，表示匿名用户
     image_base64: str
     analysis_result: str  # JSON格式的分析结果
 
@@ -162,6 +198,8 @@ class GalleryShareCreate(GalleryShareBase):
 
 class GalleryShareResponse(GalleryShareBase):
     id: int
+    user_name: Optional[str] = None  # 用户名，可为空表示匿名用户
+    is_current_user: bool = False  # 是否为当前登录用户
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

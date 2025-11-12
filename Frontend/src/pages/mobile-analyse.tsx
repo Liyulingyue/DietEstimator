@@ -1,20 +1,40 @@
-import { Card, Typography, Spin, Empty, message, Button, Modal, Form, Input, InputNumber } from 'antd';
+import { Card, Typography, Spin, message, Modal, Form, Input, InputNumber } from 'antd';
 import Gallery from '../components/Gallery';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { getApiUrl } from '../api';
 import { isLogin } from '../utils/auth';
+import { shareToGallery } from '../utils/api';
+import type { ShareToGalleryRequest } from '../utils/api';
 import { useState } from 'react';
-import { LoadingOutlined, SaveOutlined } from '@ant-design/icons';
+import { LoadingOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
 
+interface AnalysisResult {
+  success: boolean;
+  message: string;
+  result?: {
+    food_name?: string;
+    calories?: string | number;
+    reason?: string;
+    result?: any;
+  };
+  session_id?: string;
+  method?: string;
+  error?: string;
+}
+
 export default function MobileAnalyse() {
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [images, setImages] = useState<string[]>([]);
   const [recordModalVisible, setRecordModalVisible] = useState(false);
   const [editingFoodName, setEditingFoodName] = useState('');
-  const [editingCalories, setEditingCalories] = useState<any>(null);
+  const [editingCalories, setEditingCalories] = useState<number | null>(null);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareForm] = Form.useForm();
+  const [sharing, setSharing] = useState(false);
   const [form] = Form.useForm();
 
   const handleAnalysisStart = () => {
@@ -49,25 +69,9 @@ export default function MobileAnalyse() {
     }
     
     // 从分析结果中提取food_name和calories的默认值
-    const resultData = result.result?.result || result.result || {};
-    let defaultFoodName = '';
-    let defaultCalories = null;
-    
-    // 查找food_name
-    for (const [key, value] of Object.entries(resultData)) {
-      if (key === 'food_name' || (key.toLowerCase().includes('food') && key.toLowerCase().includes('name'))) {
-        defaultFoodName = String(value);
-        break;
-      }
-    }
-    
-    // 查找calories
-    for (const [key, value] of Object.entries(resultData)) {
-      if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-        defaultCalories = extractNumber(value as string | number | null | undefined);
-        break;
-      }
-    }
+    const resultData = result.result;
+    const defaultFoodName = resultData?.food_name || '';
+    const defaultCalories = resultData?.calories ? extractNumber(resultData.calories) : null;
     
     // 设置编辑状态
     setEditingFoodName(defaultFoodName);
@@ -83,6 +87,27 @@ export default function MobileAnalyse() {
     setRecordModalVisible(true);
   };
 
+  const handleShare = () => {
+    if (!result) {
+      message.warning('暂无分析结果可分享');
+      return;
+    }
+    
+    // 从分析结果中提取默认值
+    const resultData = result.result;
+    const defaultFoodName = resultData?.food_name || '';
+    const defaultCalories = resultData?.calories ? extractNumber(resultData.calories) : null;
+    
+    // 设置分享表单的初始值
+    shareForm.setFieldsValue({
+      food_name: defaultFoodName,
+      calories: defaultCalories
+    });
+    
+    // 打开分享弹窗
+    setShareModalVisible(true);
+  };
+
   const handleSaveRecord = async () => {
     try {
       // 先检查登录状态
@@ -95,22 +120,16 @@ export default function MobileAnalyse() {
       const values = await form.validateFields();
       
       // 准备要保存的数据
-      const resultToSave = { ...result.result.result };
+      const resultToSave = result?.result ? { ...result.result } : {};
       
-      // 更新food_name和calories到结构化数据中
-      if (resultToSave && typeof resultToSave === 'object') {
-        // 更新结构化数据中的food_name和calories
-        for (const [key, value] of Object.entries(resultToSave)) {
-          if (key === 'food_name' || (key.toLowerCase().includes('food') && key.toLowerCase().includes('name'))) {
-            resultToSave[key] = values.food_name;
-          } else if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-            resultToSave[key] = values.calories;
-          }
-        }
+      // 更新food_name和calories
+      if (resultToSave) {
+        resultToSave.food_name = values.food_name;
+        resultToSave.calories = values.calories;
       }
       
       // 调用后端保存记录接口
-      const response = await fetch(getApiUrl('/api/v1/ai/save_record'), {
+      const response = await fetch(getApiUrl('/api/v1/food_estimate/save_record'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +163,63 @@ export default function MobileAnalyse() {
     }
   };
 
-  const handleAnalysisComplete = (analysisResult: any) => {
+  const handleShareConfirm = async () => {
+    try {
+      // 先检查登录状态
+      const loggedIn = await isLogin();
+      if (!loggedIn) {
+        message.error('请先登录后再分享到画廊');
+        return;
+      }
+      
+      const values = await shareForm.validateFields();
+      
+      setSharing(true);
+      
+      // 准备分享数据，直接使用后端分析返回的结果作为基础
+      const resultToShare = result?.result ? { ...result.result } : {};
+      
+      // 更新用户编辑的食物名称和热量
+      if (resultToShare) {
+        resultToShare.food_name = values.food_name;
+        resultToShare.calories = values.calories;
+      }
+      
+      // 获取第一张图片的base64数据
+      const imageBase64 = images.length > 0 ? images[0] : '';
+      
+      // 构建分享请求数据，直接传递完整的分析结果作为JSON（参考记录功能）
+      const shareData: ShareToGalleryRequest = {
+        image_base64: imageBase64,
+        analysis_result: JSON.stringify(resultToShare) // 直接记录后端的分析返回
+      };
+
+      console.log('分享数据:', shareData);
+      
+      const shareResponse = await shareToGallery(shareData);
+      
+      if (shareResponse.success) {
+        message.success({
+          content: '🎉 分享成功！已发布到画廊',
+          duration: 3,
+          style: {
+            fontSize: '16px',
+            fontWeight: '600',
+          }
+        });
+        setShareModalVisible(false);
+      } else {
+        message.error(`分享失败: ${shareResponse.message || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error('分享失败:', error);
+      message.error('分享过程中发生错误，请稍后重试');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleAnalysisComplete = (analysisResult: AnalysisResult, imageData?: string[]) => {
     console.log('分析完成，结果:', analysisResult);
     
     if (analysisResult && analysisResult.success) {
@@ -158,8 +233,11 @@ export default function MobileAnalyse() {
         }
       });
       
-      // 设置分析结果
+      // 设置分析结果和图片数据
       setResult(analysisResult);
+      if (imageData && imageData.length > 0) {
+        setImages(imageData);
+      }
     } else {
       // 显示失败弹窗
       message.error({
@@ -206,434 +284,152 @@ export default function MobileAnalyse() {
         }}
         styles={{ body: { padding: '24px' } }}
         >
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'space-between',
-            gap: '12px',
-            marginBottom: '16px' 
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '12px'
-            }}>
-              <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #52c41a15, #73d13d08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <span style={{ fontSize: '20px' }}>📊</span>
-              </div>
-              <Title level={4} style={{ 
-                color: '#262626', 
-                margin: 0,
-                fontSize: '18px',
-                fontWeight: '600'
-              }}>
-                分析结果
-              </Title>
-            </div>
-            {result && (
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleRecord}
-                size="small"
-                style={{
-                  background: 'linear-gradient(135deg, #52c41a, #73d13d)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '600'
-                }}
-              >
-                保存记录
-              </Button>
-            )}
+          <div style={{ marginBottom: '24px' }}>
+            <Title level={3} style={{ color: '#262626', marginBottom: '8px' }}>
+              分析结果
+            </Title>
           </div>
 
-          <div style={{
-            backgroundColor: '#fafafa',
-            borderRadius: '16px',
-            padding: '20px',
-            minHeight: '180px',
-            border: '1px solid #f0f0f0',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
+          {/* 分析条目 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {analyzing ? (
-              <div style={{ textAlign: 'center' }}>
-                <Spin 
+              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <Spin
                   indicator={<LoadingOutlined style={{ fontSize: 48, color: '#52c41a' }} spin />}
                 />
-                <Paragraph style={{ 
-                  marginTop: '16px', 
+                <Paragraph style={{
+                  marginTop: '16px',
                   color: '#8c8c8c',
                   fontSize: '15px'
                 }}>
                   正在分析中，请稍候...
                 </Paragraph>
               </div>
-            ) : result && result.result ? (
-              <div style={{ width: '100%' }}>
-                {/* 检查是否是结构化数据（dict） */}
-                {typeof result.result.result === 'object' && result.result.result !== null ? (
-                  // 动态构造结构化数据显示
-                  <div>
-                    {Object.entries(result.result.result).map(([key, value]: [string, any]) => {
-                      // 根据key类型决定显示方式
-                      if (key === 'calories' || key.toLowerCase().includes('calorie')) {
-                        // 热量信息 - 通用样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '8px'
-                            }}>
-                              {key}
-                            </Text>
-                            <Paragraph style={{
-                              color: '#595959',
-                              fontSize: '14px',
-                              lineHeight: '1.8',
-                              margin: 0
-                            }}>
-                              {String(value)} kcal
-                            </Paragraph>
-                          </div>
-                        );
-                      } else if (key === 'food_name' || key.toLowerCase().includes('food') && key.toLowerCase().includes('name')) {
-                        // 食物名称 - 通用样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '8px'
-                            }}>
-                              {key}
-                            </Text>
-                            <Paragraph style={{
-                              color: '#595959',
-                              fontSize: '14px',
-                              lineHeight: '1.8',
-                              margin: 0
-                            }}>
-                              {String(value)}
-                            </Paragraph>
-                          </div>
-                        );
-                      } else if (key === 'estimation_basis' || key.toLowerCase().includes('basis') || key.toLowerCase().includes('reason')) {
-                        // 估算依据 - 文本样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '8px'
-                            }}>
-                              {key}
-                            </Text>
-                            <Paragraph style={{
-                              color: '#595959',
-                              fontSize: '14px',
-                              lineHeight: '1.8',
-                              margin: 0,
-                              whiteSpace: 'pre-wrap'
-                            }}>
-                              {String(value)}
-                            </Paragraph>
-                          </div>
-                        );
-                      } else if (key === 'nutrition_info' || key.toLowerCase().includes('nutrition')) {
-                        // 营养成分 - 网格样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '12px'
-                            }}>
-                              {key}
-                            </Text>
-                            <div style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(2, 1fr)',
-                              gap: '8px',
-                            }}>
-                              {typeof value === 'object' && value !== null ?
-                                Object.entries(value).map(([nutrientKey, nutrientValue]: [string, any]) => (
-                                  <div
-                                    key={nutrientKey}
-                                    style={{
-                                      background: '#fafafa',
-                                      padding: '10px',
-                                      borderRadius: '8px',
-                                      textAlign: 'center',
-                                    }}
-                                  >
-                                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                                      {nutrientKey}
-                                    </Text>
-                                    <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
-                                      {String(nutrientValue)}
-                                    </Text>
-                                  </div>
-                                )) : (
-                                  <div style={{
-                                    background: '#fafafa',
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    gridColumn: 'span 2',
-                                    textAlign: 'center',
-                                  }}>
-                                    <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
-                                      {String(value)}
-                                    </Text>
-                                  </div>
-                                )
-                              }
-                            </div>
-                          </div>
-                        );
-                      } else if (key === 'food_description' || key.toLowerCase().includes('description')) {
-                        // 食物描述 - 文本样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '8px'
-                            }}>
-                              {key}
-                            </Text>
-                            <Paragraph style={{
-                              color: '#595959',
-                              fontSize: '14px',
-                              lineHeight: '1.8',
-                              margin: 0
-                            }}>
-                              {String(value)}
-                            </Paragraph>
-                          </div>
-                        );
-                      } else {
-                        // 其他字段 - 通用样式
-                        return (
-                          <div key={key} style={{
-                            background: 'white',
-                            padding: '16px',
-                            borderRadius: '12px',
-                            marginBottom: '12px',
-                            border: '1px solid #f0f0f0'
-                          }}>
-                            <Text strong style={{
-                              fontSize: '14px',
-                              color: '#262626',
-                              display: 'block',
-                              marginBottom: '8px'
-                            }}>
-                              {key}
-                            </Text>
-                            {typeof value === 'object' && value !== null ? (
-                              <div style={{
-                                background: '#f5f5f5',
-                                padding: '8px',
-                                borderRadius: '4px',
-                                fontFamily: 'monospace',
-                                fontSize: '12px'
-                              }}>
-                                {JSON.stringify(value, null, 2)}
-                              </div>
-                            ) : (
-                              <Paragraph style={{
-                                color: '#595959',
-                                fontSize: '14px',
-                                lineHeight: '1.8',
-                                margin: 0
-                              }}>
-                                {String(value)}
-                              </Paragraph>
-                            )}
-                          </div>
-                        );
-                      }
-                    })}
-                  </div>
-                ) : typeof result.result === 'string' ? (
-                  // 如果是字符串，直接显示文本内容
+            ) : (
+              <>
+                {/* 食物名称 */}
+                <div style={{
+                  background: 'white',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #f0f0f0'
+                }}>
+                  <Text strong style={{
+                    fontSize: '14px',
+                    color: '#262626',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    🍽️ 食物名称
+                  </Text>
+                  <Paragraph style={{
+                    color: '#595959',
+                    fontSize: '14px',
+                    lineHeight: '1.8',
+                    margin: 0
+                  }}>
+                    {result?.result?.food_name || '暂无'}
+                  </Paragraph>
+                </div>
+
+                {/* 热量信息 */}
+                <div style={{
+                  background: 'white',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #f0f0f0'
+                }}>
+                  <Text strong style={{
+                    fontSize: '14px',
+                    color: '#262626',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    🔥 热量
+                  </Text>
+                  <Paragraph style={{
+                    color: '#595959',
+                    fontSize: '14px',
+                    lineHeight: '1.8',
+                    margin: 0
+                  }}>
+                    {result?.result?.calories ? `${result.result.calories} kcal` : '暂无'}
+                  </Paragraph>
+                </div>
+
+                {/* 分析依据 */}
+                <div style={{
+                  background: 'white',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  border: '1px solid #f0f0f0'
+                }}>
+                  <Text strong style={{
+                    fontSize: '14px',
+                    color: '#262626',
+                    display: 'block',
+                    marginBottom: '8px'
+                  }}>
+                    📋 分析依据
+                  </Text>
+                  <Paragraph style={{
+                    color: '#595959',
+                    fontSize: '14px',
+                    lineHeight: '1.8',
+                    margin: 0,
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {result?.result?.reason || '暂无'}
+                  </Paragraph>
+                </div>
+
+                {/* 如果result.result存在且是对象，显示原始AI响应 */}
+                {result?.result?.result && typeof result.result.result === 'object' && (
                   <div style={{
                     background: 'white',
-                    padding: '20px',
+                    padding: '16px',
                     borderRadius: '12px',
-                    border: '1px solid #f0f0f0',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: '1.8'
+                    border: '1px solid #f0f0f0'
                   }}>
-                    <Text style={{
+                    <Text strong style={{
+                      fontSize: '14px',
                       color: '#262626',
-                      fontSize: '15px',
+                      display: 'block',
+                      marginBottom: '12px'
                     }}>
-                      {result.result}
+                      🤖 AI原始响应
                     </Text>
+                    <div style={{
+                      background: '#f5f5f5',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      maxHeight: '200px',
+                      overflowY: 'auto'
+                    }}>
+                      {JSON.stringify(result.result.result, null, 2)}
+                    </div>
                   </div>
-                ) : (
-                  // 其他结构化数据，按原来的方式显示
-                  <>
-                    {/* 热量估算 */}
-                    {(result.result.calories || result.result.calorie_estimate) && (
-                      <div style={{
-                        background: 'linear-gradient(135deg, #52c41a10, #73d13d05)',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        marginBottom: '12px',
-                        borderLeft: '4px solid #52c41a'
-                      }}>
-                        <Text strong style={{ fontSize: '16px', color: '#262626' }}>
-                          总热量:
-                        </Text>
-                        <Text style={{
-                          fontSize: '28px',
-                          fontWeight: '700',
-                          color: '#52c41a',
-                          marginLeft: '8px'
-                        }}>
-                          {result.result.calories || result.result.calorie_estimate}
-                        </Text>
-                        <Text style={{ fontSize: '16px', color: '#8c8c8c' }}> kcal</Text>
-                      </div>
-                    )}
-
-                    {/* 食物描述 */}
-                    {result.result.food_description && (
-                      <div style={{
-                        background: 'white',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        marginBottom: '12px',
-                        border: '1px solid #f0f0f0'
-                      }}>
-                        <Text strong style={{
-                          fontSize: '14px',
-                          color: '#262626',
-                          display: 'block',
-                          marginBottom: '8px'
-                        }}>
-                          📋 食物描述
-                        </Text>
-                        <Paragraph style={{
-                          color: '#595959',
-                          fontSize: '14px',
-                          lineHeight: '1.8',
-                          margin: 0
-                        }}>
-                          {result.result.food_description}
-                        </Paragraph>
-                      </div>
-                    )}
-
-                    {/* 营养成分 */}
-                    {result.result.nutrition_info && (
-                      <div style={{
-                        background: 'white',
-                        padding: '16px',
-                        borderRadius: '12px',
-                        border: '1px solid #f0f0f0'
-                      }}>
-                        <Text strong style={{
-                          fontSize: '14px',
-                          color: '#262626',
-                          display: 'block',
-                          marginBottom: '12px'
-                        }}>
-                          📊 营养成分
-                        </Text>
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, 1fr)',
-                          gap: '8px',
-                        }}>
-                          {Object.entries(result.result.nutrition_info).map(([key, value]: [string, any]) => (
-                            <div
-                              key={key}
-                              style={{
-                                background: '#fafafa',
-                                padding: '10px',
-                                borderRadius: '8px',
-                                textAlign: 'center',
-                              }}
-                            >
-                              <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginBottom: '4px' }}>
-                                {key}
-                              </Text>
-                              <Text strong style={{ fontSize: '14px', color: '#52c41a' }}>
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </Text>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
                 )}
-              </div>
-            ) : (
-              <Empty 
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  <div>
-                    <Text style={{ color: '#8c8c8c', fontSize: '15px' }}>
-                      暂无分析结果
-                    </Text>
-                    <br />
-                    <Text style={{ color: '#bfbfbf', fontSize: '13px' }}>
-                      请先上传或拍摄食物图片
+
+                {/* 只有当有分析结果时才显示成功状态 */}
+                {result && result.success && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '16px',
+                    background: 'linear-gradient(135deg, #f6ffed, #d9f7be)',
+                    borderRadius: '12px',
+                    border: '1px solid #b7eb8f',
+                    textAlign: 'center'
+                  }}>
+                    <CheckCircleOutlined style={{ fontSize: '24px', color: '#52c41a', marginBottom: '8px' }} />
+                    <Text style={{ fontSize: '16px', color: '#262626', fontWeight: '500' }}>
+                      分析完成！请根据以上结果合理控制饮食。
                     </Text>
                   </div>
-                }
-              />
+                )}
+              </>
             )}
           </div>
 
@@ -775,6 +571,129 @@ export default function MobileAnalyse() {
                   downIcon: <span style={{ color: '#52c41a', fontSize: '12px' }}>▼</span>
                 }}
                 onChange={handleCaloriesChange}
+              />
+            </Form.Item>
+          </Form>
+        </div>
+      </Modal>
+
+      {/* 分享弹窗 */}
+      <Modal
+        title={
+          <div style={{ 
+            textAlign: 'center', 
+            fontSize: '16px', 
+            fontWeight: '600',
+            color: '#eb2f96',
+            marginBottom: '8px'
+          }}>
+            📤 分享到画廊
+          </div>
+        }
+        open={shareModalVisible}
+        onOk={handleShareConfirm}
+        onCancel={() => setShareModalVisible(false)}
+        okText="确认分享"
+        cancelText="取消"
+        width={350}
+        centered
+        confirmLoading={sharing}
+        okButtonProps={{
+          style: {
+            background: 'linear-gradient(135deg, #eb2f96, #f759ab)',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '600',
+            height: '36px'
+          }
+        }}
+        cancelButtonProps={{
+          style: {
+            borderRadius: '8px',
+            height: '36px'
+          }
+        }}
+        styles={{
+          body: {
+            background: 'linear-gradient(135deg, #fff0f6 0%, #fef2f1 100%)',
+            borderRadius: '12px',
+            padding: '20px'
+          }
+        }}
+        style={{
+          borderRadius: '16px',
+          overflow: 'hidden'
+        }}
+      >
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.9)',
+          borderRadius: '12px',
+          padding: '18px',
+          border: '1px solid rgba(235, 47, 150, 0.2)',
+          boxShadow: '0 4px 12px rgba(235, 47, 150, 0.1)'
+        }}>
+          <Form
+            form={shareForm}
+            layout="vertical"
+          >
+            <Form.Item
+              label={
+                <span style={{ 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#262626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  🍽️ 食物名称
+                </span>
+              }
+              name="food_name"
+              rules={[{ required: true, message: '请输入食物名称' }]}
+              style={{ marginBottom: '18px' }}
+            >
+              <Input 
+                placeholder="请输入食物名称" 
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid #d9d9d9',
+                  height: '38px',
+                  fontSize: '14px'
+                }}
+              />
+            </Form.Item>
+            
+            <Form.Item
+              label={
+                <span style={{ 
+                  fontSize: '14px', 
+                  fontWeight: '600', 
+                  color: '#262626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  🔥 热量 (kcal)
+                </span>
+              }
+              name="calories"
+              rules={[{ required: true, message: '请输入热量值' }]}
+              style={{ marginBottom: '0' }}
+            >
+              <InputNumber
+                placeholder="请输入热量值"
+                min={0}
+                style={{ 
+                  width: '100%',
+                  borderRadius: '8px',
+                  border: '1px solid #d9d9d9',
+                  height: '38px'
+                }}
+                controls={{
+                  upIcon: <span style={{ color: '#eb2f96', fontSize: '12px' }}>▲</span>,
+                  downIcon: <span style={{ color: '#eb2f96', fontSize: '12px' }}>▼</span>
+                }}
               />
             </Form.Item>
           </Form>

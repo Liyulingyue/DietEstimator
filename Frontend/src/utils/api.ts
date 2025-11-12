@@ -46,7 +46,7 @@ function dataURLtoFile(dataUrl: string, filename: string): File {
 /**
  * 从cookie或localStorage中获取session_id
  */
-function getSessionId(): string {
+export function getSessionId(): string {
   // 首先尝试从cookie中获取（用于httponly cookie的自动传递）
   // 但由于httponly属性，JavaScript无法直接访问
   // 所以主要依赖于credentials: 'include'来自动传递cookie
@@ -191,7 +191,8 @@ export async function getAvailableMethods(): Promise<any[]> {
  */
 export interface GalleryShare {
   id: number;
-  user_id: number | null;
+  user_name: string | null;
+  is_current_user: boolean;
   image_base64: string;
   analysis_result: string;
   created_at: string;
@@ -281,6 +282,41 @@ export async function shareToGallery(
     return {
       success: false,
       message: '分享过程中发生错误',
+    };
+  }
+}
+
+/**
+ * 删除画廊分享
+ * @param shareId - 分享ID
+ * @returns 删除结果
+ */
+export async function deleteGalleryShare(
+  shareId: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/gallery/share/${shareId}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        message: errorData.detail || '删除失败',
+      };
+    }
+
+    return {
+      success: true,
+      message: '分享已删除',
+    };
+  } catch (error) {
+    console.error('删除画廊分享异常:', error);
+    return {
+      success: false,
+      message: '删除过程中发生错误',
     };
   }
 }

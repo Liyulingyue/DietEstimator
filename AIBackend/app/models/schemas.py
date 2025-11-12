@@ -3,7 +3,7 @@ API请求和响应数据模型
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 from enum import Enum
 
 class AnalysisMethod(str, Enum):
@@ -31,7 +31,7 @@ class EstimateResponse(BaseModel):
     message: str = Field(..., description="响应消息")
     raw: Optional[Any] = Field(None, description="原始分析结果")
     error: Optional[str] = Field(None, description="错误信息")
-    calories: Optional[str] = Field(None, description="热量值")
+    calories: Optional[Union[float, str]] = Field(None, description="热量值，float类型单位为大卡，str类型可能包含单位")
     food_name: Optional[str] = Field(None, description="食物名称")
     reason: Optional[str] = Field(None, description="估算依据")
 
@@ -56,7 +56,7 @@ class PortionInfo(BaseModel):
 
 class CalorieInfo(BaseModel):
     """热量信息模型"""
-    calories: Optional[str] = Field(None, description="热量值")
+    calories: Optional[Union[float, str]] = Field(None, description="热量值，float类型单位为大卡，str类型可能包含单位")
     basis: Optional[str] = Field(None, description="估算依据")
     food_name: Optional[str] = Field(None, description="食物名称")
 
@@ -73,3 +73,16 @@ class TestConnectionResponse(BaseModel):
     status: str = Field(..., description="测试状态")
     message: str = Field(..., description="响应消息")
     response: Optional[str] = Field(None, description="AI回复内容")
+
+
+class BowelEstimateResponse(BaseModel):
+    """粪便分析响应模型"""
+    success: bool = Field(..., description="是否成功")
+    message: str = Field(..., description="响应消息")
+    raw: Optional[Any] = Field(None, description="原始分析结果")
+    error: Optional[str] = Field(None, description="错误信息")
+    color: Optional[str] = Field(None, description="粪便颜色")
+    quantity: Optional[str] = Field(None, description="粪便份量")
+    shape: Optional[str] = Field(None, description="粪便形态")
+    health_comment: Optional[str] = Field(None, description="健康点评")
+    analysis_basis: Optional[str] = Field(None, description="分析依据")

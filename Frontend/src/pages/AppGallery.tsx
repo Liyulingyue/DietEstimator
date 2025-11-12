@@ -9,24 +9,25 @@ import {
   ShareAltOutlined,
   PlusOutlined,
   LoadingOutlined,
-  EyeOutlined
+  EyeOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
-import Gallery from '../components/Gallery'
 import { useState, useEffect } from 'react'
-import { getGalleryShares, shareToGallery } from '../utils/api'
-import type { GalleryShare, ShareToGalleryRequest } from '../utils/api'
+import { useNavigate } from 'react-router-dom'
+import { getGalleryShares, deleteGalleryShare } from '../utils/api'
+import type { GalleryShare } from '../utils/api'
 
 const { Text } = Typography;
 
 function AppGallery() {
-  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const navigate = useNavigate();
   const [galleryShares, setGalleryShares] = useState<GalleryShare[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sharing, setSharing] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedShare, setSelectedShare] = useState<GalleryShare | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // 获取画廊数据
   const fetchGalleryShares = async () => {
@@ -52,27 +53,17 @@ function AppGallery() {
     try {
       const analysisData = JSON.parse(share.analysis_result);
       
-      // 优先从 full_analysis 中提取数据
-      const fullAnalysis = analysisData.full_analysis;
-      let foodName = analysisData.food_name || '未知食物';
+      // 直接使用后端分析返回的数据结构
+      const foodName = analysisData.food_name || '未知食物';
       let calories = analysisData.calories || 0;
-      let caloriesDisplay = analysisData.calories_display || '';
-      let estimationBasis = analysisData.estimation_basis || '基于AI分析估算';
+      const reason = analysisData.reason || '';
       
-      // 如果有 full_analysis，优先使用其中的数据
-      if (fullAnalysis && fullAnalysis.result) {
-        const result = fullAnalysis.result;
-        foodName = result.food_name || foodName;
-        caloriesDisplay = result.calories || caloriesDisplay;
-        estimationBasis = result.estimation_basis || estimationBasis;
-        
-        // 重新解析卡路里数值
-        if (typeof result.calories === 'string') {
-          const match = result.calories.match(/(\d+)/);
-          calories = match ? parseInt(match[1], 10) : calories;
-        } else if (typeof result.calories === 'number') {
-          calories = result.calories;
-        }
+      // 解析卡路里数值
+      if (typeof analysisData.calories === 'string') {
+        const match = analysisData.calories.match(/(\d+)/);
+        calories = match ? parseInt(match[1], 10) : calories;
+      } else if (typeof analysisData.calories === 'number') {
+        calories = analysisData.calories;
       }
       
       return {
@@ -80,24 +71,25 @@ function AppGallery() {
         imageUrl: share.image_base64,
         foodName: foodName,
         calories: calories,
-        caloriesDisplay: caloriesDisplay,
+        caloriesDisplay: analysisData.calories || '',
         protein: analysisData.protein || 0,
         carbs: analysisData.carbs || 0,
         fat: analysisData.fat || 0,
+        reason: reason,
         date: new Date(share.created_at).toLocaleString('zh-CN', {
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
         }),
-        userName: share.user_id ? `用户${share.user_id}` : '匿名用户',
+        userName: share.user_name ? share.user_name : '匿名用户',
         userAvatar: '',
         likes: 0, // 暂时不支持点赞功能
         shares: 0, // 暂时不支持分享计数
         isLiked: false,
         tags: analysisData.tags || ['健康饮食'],
-        estimationBasis: estimationBasis,
-        fullAnalysis: analysisData.full_analysis || null
+        estimationBasis: analysisData.estimation_basis || '基于AI分析估算',
+        fullAnalysis: analysisData
       };
     } catch (error) {
       console.error('解析分析结果失败:', error);
@@ -110,8 +102,9 @@ function AppGallery() {
         protein: 0,
         carbs: 0,
         fat: 0,
+        reason: '',
         date: new Date(share.created_at).toLocaleString('zh-CN'),
-        userName: share.user_id ? `用户${share.user_id}` : '匿名用户',
+        userName: share.user_name ? share.user_name : '匿名用户',
         userAvatar: '',
         likes: 0,
         shares: 0,
@@ -122,67 +115,7 @@ function AppGallery() {
       };
     }
   };
-
-  // 处理分享完成
-  const handleShareComplete = async (analysisResult: any, images?: string[]) => {
-    try {
-      setSharing(true);
-      
-      // 从Gallery组件的结果中提取数据
-      const result = analysisResult.result || {};
-      
-      // 解析卡路里数值，从字符串中提取数字
-      const parseCalories = (caloriesStr: any): number => {
-        if (typeof caloriesStr === 'number') return caloriesStr;
-        if (typeof caloriesStr === 'string') {
-          // 提取数字，例如从"约1200大卡（估算值...）"中提取1200
-          const match = caloriesStr.match(/(\d+)/);
-          return match ? parseInt(match[1], 10) : 0;
-        }
-        return 0;
-      };
-      
-      // 获取第一张图片的base64数据
-      const imageBase64 = images && images.length > 0 ? images[0] : '';
-      
-      // 构建分享请求数据，确保传递完整的分析结果
-      const shareData: ShareToGalleryRequest = {
-        image_base64: imageBase64,
-        analysis_result: JSON.stringify({
-          food_name: result.food_name || '未知食物',
-          calories: parseCalories(result.calories),
-          protein: result.protein || 0,
-          carbs: result.carbs || 0,
-          fat: result.fat || 0,
-          tags: result.tags || ['健康饮食'],
-          estimation_basis: result.estimation_basis || '基于AI分析估算',
-          // 保存原始的卡路里字符串用于显示
-          calories_display: typeof result.calories === 'string' ? result.calories : '',
-          // 保存完整的分析结果
-          full_analysis: analysisResult
-        })
-      };
-
-      console.log('分享数据:', shareData);
-      
-      const shareResponse = await shareToGallery(shareData);
-      
-      if (shareResponse.success) {
-        message.success('分享成功！');
-        setShareModalVisible(false);
-        // 重新获取画廊数据
-        fetchGalleryShares();
-      } else {
-        message.error(shareResponse.message || '分享失败');
-      }
-    } catch (error) {
-      console.error('分享失败:', error);
-      message.error('分享过程中发生错误');
-    } finally {
-      setSharing(false);
-    }
-  };
-
+  
   const handleImageClick = (share: GalleryShare) => {
     setSelectedShare(share);
     setDetailModalVisible(true);
@@ -191,6 +124,259 @@ function AppGallery() {
   const handleCloseDetail = () => {
     setDetailModalVisible(false);
     setSelectedShare(null);
+  };
+
+  // 处理删除分享
+  const handleDeleteShare = async (shareId: number, shareName: string) => {
+    Modal.confirm({
+      title: null,
+      icon: null,
+      content: (
+        <div style={{
+          padding: '0',
+          borderRadius: '20px',
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(255, 77, 79, 0.15)',
+          border: '1px solid rgba(255, 77, 79, 0.1)'
+        }}>
+          {/* 头部区域 */}
+          <div style={{
+            background: 'linear-gradient(135deg, #ff4d4f 0%, #ff7875 50%, #ffa39e 100%)',
+            padding: '24px 20px',
+            textAlign: 'center',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* 背景装饰 */}
+            <div style={{
+              position: 'absolute',
+              top: '-50%',
+              right: '-20%',
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.1)',
+              filter: 'blur(20px)'
+            }} />
+            <div style={{
+              position: 'absolute',
+              bottom: '-30%',
+              left: '-15%',
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.08)',
+              filter: 'blur(15px)'
+            }} />
+
+            {/* 标题和图标 */}
+            <div style={{
+              position: 'relative',
+              zIndex: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(10px)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 8px 24px rgba(255, 77, 79, 0.3)'
+              }}>
+                <span style={{ fontSize: '28px' }}>🗑️</span>
+              </div>
+              <div>
+                <div style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: 'white',
+                  marginBottom: '4px',
+                  textShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
+                }}>
+                  删除画廊分享
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  fontWeight: '400'
+                }}>
+                  此操作不可撤销
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 内容区域 */}
+          <div style={{
+            background: 'white',
+            padding: '24px 20px'
+          }}>
+            {/* 分享信息卡片 */}
+            <div style={{
+              background: 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+              borderRadius: '16px',
+              padding: '20px',
+              marginBottom: '20px',
+              border: '1px solid #f0f0f0',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* 装饰性背景 */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                right: '0',
+                width: '60px',
+                height: '60px',
+                background: 'linear-gradient(135deg, rgba(255, 77, 79, 0.05) 0%, rgba(255, 120, 117, 0.03) 100%)',
+                borderRadius: '0 16px 0 60px',
+                clipPath: 'polygon(100% 0%, 0% 100%, 100% 100%)'
+              }} />
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #eb2f96 0%, #f759ab 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(235, 47, 150, 0.2)',
+                  border: '2px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  <span style={{ fontSize: '20px' }}>🍽️</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#262626',
+                    lineHeight: '1.2'
+                  }}>
+                    {shareName}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 警告提示 */}
+            <div style={{
+              background: 'linear-gradient(135deg, #fff2f0 0%, #ffebe9 100%)',
+              border: '1px solid #ffccc7',
+              borderRadius: '12px',
+              padding: '16px',
+              textAlign: 'center',
+              boxShadow: 'inset 0 1px 3px rgba(255, 77, 79, 0.1)'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#d4380d'
+                }}>
+                  重要提醒
+                </span>
+              </div>
+              <div style={{
+                fontSize: '13px',
+                color: '#d4380d',
+                lineHeight: '1.5',
+                fontWeight: '500'
+              }}>
+                删除后将无法恢复此分享，请确认是否继续
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      okText: (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          fontWeight: '600',
+          fontSize: '14px',
+          color: 'white'
+        }}>
+          <span>🗑️</span>
+          <span>确认删除</span>
+        </div>
+      ),
+      cancelText: (
+        <span style={{
+          fontWeight: '500',
+          fontSize: '14px'
+        }}>
+          取消
+        </span>
+      ),
+      okType: 'danger',
+      width: 380,
+      centered: true,
+      okButtonProps: {
+        style: {
+          background: 'linear-gradient(135deg, #ff4d4f, #ff7875)',
+          border: 'none',
+          borderRadius: '10px',
+          fontWeight: '600',
+          height: '40px',
+          boxShadow: '0 4px 12px rgba(255, 77, 79, 0.3)',
+          transition: 'all 0.3s ease'
+        }
+      },
+      cancelButtonProps: {
+        style: {
+          borderRadius: '10px',
+          height: '40px',
+          fontWeight: '500',
+          border: '1px solid #d9d9d9',
+          transition: 'all 0.3s ease'
+        }
+      },
+      onOk: async () => {
+        try {
+          setDeleting(true);
+          const result = await deleteGalleryShare(shareId);
+          
+          if (result.success) {
+            message.success('分享已删除');
+            setDetailModalVisible(false);
+            setSelectedShare(null);
+            // 重新获取画廊数据
+            fetchGalleryShares();
+          } else {
+            message.error(result.message || '删除失败');
+          }
+        } catch (error) {
+          console.error('删除分享失败:', error);
+          message.error('删除过程中发生错误');
+        } finally {
+          setDeleting(false);
+        }
+      }
+    });
   };
 
   return (
@@ -225,7 +411,7 @@ function AppGallery() {
           icon={<PlusOutlined />}
           size="large"
           block
-          onClick={() => setShareModalVisible(true)}
+          onClick={() => navigate('/app/analyse')}
           style={{
             marginBottom: '20px',
             height: '52px',
@@ -237,7 +423,7 @@ function AppGallery() {
             boxShadow: '0 4px 16px rgba(235, 47, 150, 0.3)'
           }}
         >
-          分享我的餐食
+          分析并分享我的餐食
         </Button>
 
         {loading ? (
@@ -270,7 +456,7 @@ function AppGallery() {
             >
               <Button
                 type="primary"
-                onClick={() => setShareModalVisible(true)}
+                onClick={() => navigate('/app/analyse')}
                 style={{
                   marginTop: '16px',
                   borderRadius: '12px',
@@ -279,7 +465,7 @@ function AppGallery() {
                   border: 'none'
                 }}
               >
-                立即分享
+                立即分析并分享
               </Button>
             </Empty>
           </Card>
@@ -360,8 +546,8 @@ function AppGallery() {
                         </div>
                       )}
                     </div>
-                    {/* 食物名称 */}
-                    <div style={{ padding: '12px' }}>
+                    {/* 食物名称和操作区域 */}
+                    <div style={{ padding: '12px', position: 'relative' }}>
                       <Text strong style={{
                         fontSize: '14px',
                         display: 'block',
@@ -373,14 +559,55 @@ function AppGallery() {
                       }}>
                         {item.foodName}
                       </Text>
-                      <Text style={{
-                        fontSize: '12px',
-                        color: '#8c8c8c',
-                        display: 'block'
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
                       }}>
-                        <ClockCircleOutlined style={{ marginRight: '4px' }} />
-                        {item.date}
-                      </Text>
+                        <Text style={{
+                          fontSize: '12px',
+                          color: '#8c8c8c'
+                        }}>
+                          <ClockCircleOutlined style={{ marginRight: '4px' }} />
+                          {item.date}
+                        </Text>
+                        {/* 删除按钮 - 只有当前用户发布的分享才能删除 */}
+                        {share.is_current_user && (
+                          <Button
+                            type="text"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation(); // 阻止事件冒泡
+                              const item = formatGalleryItem(share);
+                              handleDeleteShare(share.id, item.foodName);
+                            }}
+                            loading={deleting}
+                            style={{
+                              color: '#ff4d4f',
+                              fontSize: '12px',
+                              padding: '4px 8px',
+                              height: 'auto',
+                              borderRadius: '6px',
+                              fontWeight: '500',
+                              transition: 'all 0.3s ease',
+                              background: 'transparent',
+                              border: '1px solid transparent'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)';
+                              e.currentTarget.style.borderColor = '#ff4d4f';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.borderColor = 'transparent';
+                            }}
+                          >
+                            删除
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </Card>
                 );
@@ -403,45 +630,6 @@ function AppGallery() {
           </>
         )}
       </div>
-
-      {/* 分享模态框 */}
-      <Modal
-        title={
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#eb2f96'
-          }}>
-            <PictureOutlined />
-            分享我的餐食
-          </div>
-        }
-        open={shareModalVisible}
-        onCancel={() => setShareModalVisible(false)}
-        footer={null}
-        width="95%"
-        centered
-        styles={{
-          body: {
-            padding: '20px',
-            background: 'linear-gradient(135deg, #fff0f6 0%, #fef2f1 100%)'
-          }
-        }}
-        style={{
-          borderRadius: '20px',
-          overflow: 'hidden'
-        }}
-      >
-        <Gallery
-          onAnalysisComplete={handleShareComplete}
-          onAnalysisStart={() => {
-            console.log('画廊分享分析开始');
-          }}
-        />
-      </Modal>
 
       {/* 详情模态框 */}
       <Modal
@@ -565,16 +753,6 @@ function AppGallery() {
                         <FireOutlined style={{ marginRight: '4px', color: '#ff4d4f' }} />
                         千卡 (kcal)
                       </Text>
-                      {item.caloriesDisplay && item.caloriesDisplay !== `${item.calories} kcal` && (
-                        <Text style={{ 
-                          fontSize: '12px', 
-                          color: '#bfbfbf',
-                          display: 'block',
-                          marginTop: '4px'
-                        }}>
-                          {item.caloriesDisplay}
-                        </Text>
-                      )}
                     </div>
                   </div>
                 )}
@@ -643,24 +821,45 @@ function AppGallery() {
                   marginBottom: '16px',
                   color: '#262626'
                 }}>
-                  AI分析结果
+                  🤖 AI分析结果
                 </Text>
-                <div style={{
-                  background: '#f9f9f9',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  fontSize: '14px',
-                  color: '#595959',
-                  lineHeight: '1.6'
-                }}>
-                  {item.estimationBasis && item.estimationBasis !== '基于AI分析估算' ? (
-                    <div style={{ whiteSpace: 'pre-line' }}>
-                      {item.estimationBasis}
+                
+                {/* 原因 */}
+                {item.reason && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{
+                      background: '#f9f9f9',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      fontSize: '14px',
+                      color: '#595959',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {item.reason}
                     </div>
-                  ) : (
-                    '暂无详细分析结果'
-                  )}
-                </div>
+                  </div>
+                )}
+                
+                {/* 其他分析信息 - 仅在没有原因时显示 */}
+                {!item.reason && (
+                  <div style={{
+                    background: '#f9f9f9',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    fontSize: '14px',
+                    color: '#595959',
+                    lineHeight: '1.6'
+                  }}>
+                    {item.estimationBasis && item.estimationBasis !== '基于AI分析估算' ? (
+                      <div style={{ whiteSpace: 'pre-line' }}>
+                        {item.estimationBasis}
+                      </div>
+                    ) : (
+                      '暂无详细分析结果'
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
