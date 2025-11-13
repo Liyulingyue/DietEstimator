@@ -1,0 +1,18 @@
+# AI Backend Development Dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY AIBackend/requirements.txt ./
+
+# Install dependencies
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir python-dotenv
+
+# Expose port
+EXPOSE 8001
+
+# Start command (will be overridden by volume mount in dev)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]

@@ -31,7 +31,7 @@ services:
   backend:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.dev
+      dockerfile: docker/Dockerfile.backend.dev
     ports:
       - "8000:8000"
     environment:
@@ -54,7 +54,7 @@ services:
   ai-backend:
     build:
       context: ..
-      dockerfile: AIBackend/Dockerfile
+      dockerfile: docker/Dockerfile.ai-backend.dev
     ports:
       - "8001:8001"
     environment:

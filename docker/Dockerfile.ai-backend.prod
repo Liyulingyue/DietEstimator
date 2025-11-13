@@ -1,19 +1,18 @@
-# 基础镜像
+# AI Backend Production Dockerfile
 FROM python:3.10-slim
 
-# 设置工作目录
 WORKDIR /app
 
-# 复制项目文件
-COPY . /app
+# Copy project files
+COPY AIBackend/ /app
 
-# 安装依赖
+# Install dependencies
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir python-dotenv
 
-# 暴露端口
+# Expose port
 EXPOSE 8001
 
-# 启动命令
+# Start command
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
