@@ -42,7 +42,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.frontend.prod
     ports:
-      - "80:80"
+      - "5176:5176"
     networks:
       - diet-network
     restart: always
