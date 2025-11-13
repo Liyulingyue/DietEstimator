@@ -5,11 +5,11 @@ echo "Starting production environment..."
 
 # 等待数据库启动
 echo "Waiting for database to be ready..."
-while ! nc -z db 3306; do
-    echo "Database is not ready yet. Waiting 2 seconds..."
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$POSTGRES_SERVER" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' 2>/dev/null; do
+    echo "PostgreSQL is not ready yet. Waiting 2 seconds..."
     sleep 2
 done
-echo "Database is ready!"
+echo "PostgreSQL is ready!"
 
 # 执行数据库迁移
 echo "Running database migrations..."

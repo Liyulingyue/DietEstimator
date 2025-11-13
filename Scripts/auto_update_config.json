@@ -1,0 +1,25 @@
+{
+  "default_branch": "main",
+  "default_interval": "10m",
+  "jobs": [
+    {
+      "name": "dietestimator",
+      "repo_path": "..",
+      "interval": "10m",
+      "post_update": [
+        {
+          "cmd": ["docker-compose", "-f", "docker/docker-compose.prod.yml", "down"],
+          "cwd": ".."
+        },
+        {
+          "cmd": ["docker-compose", "-f", "docker/docker-compose.prod.yml", "--env-file", ".env.prod", "up", "-d", "db"],
+          "cwd": ".."
+        },
+        {
+          "cmd": ["docker-compose", "-f", "docker/docker-compose.prod.yml", "--env-file", ".env.prod", "up", "-d", "--build"],
+          "cwd": ".."
+        }
+      ]
+    }
+  ]
+}
