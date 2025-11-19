@@ -1,7 +1,4 @@
 # 开发环境配置
-name: dietestimator-dev
-
-version: '3.8'
 
 services:
   db:

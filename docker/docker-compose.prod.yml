@@ -1,7 +1,4 @@
 # 生产环境配置
-name: dietestimator-prod
-
-version: '3.8'
 
 services:
   backend:
