@@ -7,5 +7,9 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5176
+  },
+  define: {
+    // 禁用rollup原生二进制文件以避免依赖问题
+    'process.env.ROLLUP_SKIP_NATIVE': 'true'
   }
 })
