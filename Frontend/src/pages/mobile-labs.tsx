@@ -1,5 +1,5 @@
 import { Card, Typography, Button, Tag } from 'antd';
-import { ExperimentOutlined, BulbOutlined, ApiOutlined, ThunderboltOutlined, StarOutlined, ScanOutlined, MedicineBoxOutlined, PictureOutlined } from '@ant-design/icons';
+import { ExperimentOutlined, BulbOutlined, ApiOutlined, ThunderboltOutlined, StarOutlined, ScanOutlined, MedicineBoxOutlined } from '@ant-design/icons';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { useState } from 'react';

@@ -284,10 +284,58 @@ export default function MobileAnalyse() {
         }}
         styles={{ body: { padding: '24px' } }}
         >
-          <div style={{ marginBottom: '24px' }}>
-            <Title level={3} style={{ color: '#262626', marginBottom: '8px' }}>
+          <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Title level={3} style={{ color: '#262626', margin: 0 }}>
               分析结果
             </Title>
+            
+            {/* 分享和记录按钮 */}
+            {result && result.success && (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleShare}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'linear-gradient(135deg, #eb2f96, #f759ab)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(235, 47, 150, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  📤 分享
+                </button>
+                <button
+                  onClick={handleRecord}
+                  style={{
+                    padding: '8px 16px',
+                    background: 'linear-gradient(135deg, #52c41a, #73d13d)',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    boxShadow: '0 2px 8px rgba(82, 196, 26, 0.3)',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  💾 记录
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 分析条目 */}

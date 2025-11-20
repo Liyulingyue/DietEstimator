@@ -2,7 +2,7 @@ import { useState } from 'react';
 import TabBar from '../components/TabBar';
 import Gallery from '../components/Gallery';
 import { Card, Typography, Empty, Spin, Divider, Button, message, Modal, Form, Input, InputNumber } from 'antd';
-import { CopyOutlined, SaveOutlined } from '@ant-design/icons';
+import { CopyOutlined, SaveOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { getApiUrl } from '../api';
 import { isLogin } from '../utils/auth';
 
@@ -100,6 +100,22 @@ export default function Analyse() {
     
     // 打开弹窗
     setRecordModalVisible(true);
+  };
+
+  const handleShare = () => {
+    if (!analysisResult) {
+      message.warning('暂无分析结果可分享');
+      return;
+    }
+    
+    const result = analysisResult.result;
+    const shareText = `我刚刚分析了一道美食：${result?.food_name || '未知食物'}，热量约为${result?.calories || '未知'} kcal！快来试试DietEstimator吧！`;
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+      message.success('分享文本已复制到剪贴板！');
+    }).catch(() => {
+      message.error('复制失败，请手动复制');
+    });
   };
 
   const handleSaveRecord = async () => {
@@ -313,19 +329,34 @@ export default function Analyse() {
           }}>
             <Title level={4} style={{ color: '#1565c0', margin: 0 }}>分析结果</Title>
             {analysisResult && (
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleRecord}
-                style={{
-                  background: 'linear-gradient(135deg, #52c41a, #73d13d)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: '600'
-                }}
-              >
-                记录
-              </Button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <Button
+                  type="primary"
+                  icon={<ShareAltOutlined />}
+                  onClick={handleShare}
+                  style={{
+                    background: 'linear-gradient(135deg, #1890ff, #40a9ff)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600'
+                  }}
+                >
+                  分享
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleRecord}
+                  style={{
+                    background: 'linear-gradient(135deg, #52c41a, #73d13d)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontWeight: '600'
+                  }}
+                >
+                  记录
+                </Button>
+              </div>
             )}
           </div>
           <div style={{

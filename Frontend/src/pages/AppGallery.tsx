@@ -1,16 +1,12 @@
-import { Button, Card, Typography, Empty, Image, Tag, Avatar, Space, Modal, message, Spin, Row, Col } from 'antd'
+import { Button, Card, Typography, Empty, Image, Avatar, Modal, message, Spin } from 'antd'
 import { 
   PictureOutlined, 
   FireOutlined, 
   ClockCircleOutlined, 
   UserOutlined,
-  HeartOutlined,
-  HeartFilled,
-  ShareAltOutlined,
-  PlusOutlined,
-  LoadingOutlined,
   EyeOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  PlusOutlined
 } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
