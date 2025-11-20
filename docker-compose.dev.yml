@@ -27,7 +27,7 @@ services:
 
   backend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.backend.dev
     ports:
       - "8000:8000"
@@ -46,11 +46,11 @@ services:
       - diet-network-dev
     restart: unless-stopped
     volumes:
-      - ../Backend:/app
+      - ./Backend:/app
 
   ai-backend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.ai-backend.dev
     ports:
       - "8001:8001"
@@ -60,11 +60,11 @@ services:
       - diet-network-dev
     restart: unless-stopped
     volumes:
-      - ../AIBackend:/app
+      - ./AIBackend:/app
 
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.frontend.dev
     ports:
       - "5176:5176"
@@ -75,7 +75,7 @@ services:
       - diet-network-dev
     restart: unless-stopped
     volumes:
-      - ../Frontend:/app
+      - ./Frontend:/app
       - /app/node_modules
 
 networks:

@@ -8,15 +8,11 @@
       "interval": "10m",
       "post_update": [
         {
-          "cmd": ["docker-compose", "-f", "docker/docker-compose.dev.yml", "down"],
+          "cmd": ["docker-compose", "-f", "docker-compose.prod.yml", "down"],
           "cwd": ".."
         },
         {
-          "cmd": ["docker-compose", "-f", "docker/docker-compose.dev.yml", "up", "-d", "db", "adminer"],
-          "cwd": ".."
-        },
-        {
-          "cmd": ["docker-compose", "-f", "docker/docker-compose.dev.yml", "up", "-d", "--build"],
+          "cmd": ["docker-compose", "-f", "docker-compose.prod.yml", "up", "-d", "--build"],
           "cwd": ".."
         }
       ]

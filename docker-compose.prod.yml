@@ -1,16 +1,29 @@
 # 生产环境配置
 
 services:
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=diet_estimator
+      - POSTGRES_USER=dietuser
+      - POSTGRES_PASSWORD=dietpass_prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - diet-network
+    restart: unless-stopped
+    # 仅在内部网络访问，不暴露端口
+
   backend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.backend.prod
     ports:
       - "8000:8000"
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_USER=dietuser
-      - POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
+      - POSTGRES_PASSWORD=dietpass_prod
       - POSTGRES_DB=diet_estimator
       - POSTGRES_PORT=5432
       - ENVIRONMENT=production
@@ -20,43 +33,28 @@ services:
       - ai-backend
     networks:
       - diet-network
-    restart: always
+    restart: unless-stopped
 
   ai-backend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.ai-backend.prod
-    ports:
-      - "8001:8001"
     environment:
       - ENVIRONMENT=production
     networks:
       - diet-network
-    restart: always
+    restart: unless-stopped
+    # 仅在内部网络访问，不暴露端口
 
   frontend:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile.frontend.prod
     ports:
       - "5176:5176"
     networks:
       - diet-network
-    restart: always
-
-  db:
-    image: postgres:15
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=diet_estimator
-      - POSTGRES_USER=dietuser
-      - POSTGRES_PASSWORD=${PROD_DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - diet-network
-    restart: always
+    restart: unless-stopped
 
 networks:
   diet-network:
