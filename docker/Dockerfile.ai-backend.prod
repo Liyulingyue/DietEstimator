@@ -6,10 +6,10 @@ WORKDIR /app
 # Copy project files
 COPY AIBackend/ /app
 
-# Install dependencies
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir python-dotenv
+# Install dependencies with Tsinghua mirror
+RUN pip install --no-cache-dir --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && pip install --no-cache-dir python-dotenv -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # Expose port
 EXPOSE 8001

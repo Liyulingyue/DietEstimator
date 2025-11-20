@@ -90,7 +90,7 @@ DietEstimator/
 - **Node.js 18+** (本地开发)
 - **Git**
 
-### 方式一：使用Docker Compose (推荐)
+### 方式一：使用Docker Compose
 
 **开发环境完整部署**
 
@@ -100,13 +100,13 @@ git clone [repository-url]
 cd DietEstimator
 
 # 启动所有服务 (数据库、后端、AI后端、前端、Adminer)
-docker-compose -f docker/docker-compose.dev.yml up -d
+docker-compose -f docker-compose.dev.yml up -d
 
 # 查看服务状态
-docker-compose -f docker/docker-compose.dev.yml ps
+docker-compose -f docker-compose.dev.yml ps
 
 # 查看日志
-docker-compose -f docker/docker-compose.dev.yml logs -f
+docker-compose -f docker-compose.dev.yml logs -f
 ```
 
 **访问地址**：
@@ -117,7 +117,7 @@ docker-compose -f docker/docker-compose.dev.yml logs -f
 
 **停止服务**：
 ```powershell
-docker-compose -f docker/docker-compose.dev.yml down
+docker-compose -f docker-compose.dev.yml down
 ```
 
 ### 方式二：本地开发 (支持热重载)
@@ -126,7 +126,7 @@ docker-compose -f docker/docker-compose.dev.yml down
 
 ```powershell
 # 仅启动数据库和Adminer
-docker-compose -f docker/docker-compose.dev.yml up -d db adminer
+docker-compose -f docker-compose.dev.yml up -d db adminer
 ```
 
 #### 2. 启动主后端
@@ -218,54 +218,65 @@ alembic downgrade -1
 
 ```powershell
 # 查看数据库容器日志
-docker-compose -f docker/docker-compose.dev.yml logs db
+docker-compose -f docker-compose.dev.yml logs db
 
 # 进入数据库容器
-docker-compose -f docker/docker-compose.dev.yml exec db psql -U dietuser -d diet_estimator
+docker-compose -f docker-compose.dev.yml exec db psql -U dietuser -d diet_estimator
 
 # 备份数据库
-docker-compose -f docker/docker-compose.dev.yml exec db pg_dump -U dietuser diet_estimator > backup.sql
+docker-compose -f docker-compose.dev.yml exec db pg_dump -U dietuser diet_estimator > backup.sql
 
 # 恢复数据库
-cat backup.sql | docker-compose -f docker/docker-compose.dev.yml exec -T db psql -U dietuser -d diet_estimator
+cat backup.sql | docker-compose -f docker-compose.dev.yml exec -T db psql -U dietuser -d diet_estimator
 ```
 
 ## 生产环境部署
 
-### 1. 准备环境配置
+### 使用 Docker Compose 部署（推荐）
+
+#### 1. 准备配置文件
 
 ```powershell
-# 创建生产环境配置文件
-copy .env.example .env.prod
+# 配置 Backend 环境变量（用于非 Docker 部署或备份配置）
+cd Backend
+copy .env.example .env
+# 编辑 .env，设置生产环境数据库连接信息和 API 密钥
 
-# 编辑 .env.prod，设置安全的密码和密钥
-# 必须设置: PROD_DB_PASSWORD
+# 配置 Frontend API 地址
+cd ..\Frontend
+# 编辑 .env.production，设置 VITE_API_BASE_URL 为生产环境后端地址
 ```
 
-### 2. 启动生产服务
+#### 2. 修改 Docker Compose 配置
+
+编辑 `docker-compose.prod.yml`，修改以下敏感配置：
+- 数据库密码：将 `POSTGRES_PASSWORD` 从 `dietpass_prod` 改为强密码
+- 确保所有服务的环境变量正确配置
+
+#### 3. 启动生产服务
 
 ```powershell
 # 使用生产配置启动
-docker-compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
+docker-compose -f docker-compose.prod.yml up -d
 
 # 查看服务状态
-docker-compose -f docker/docker-compose.prod.yml ps
+docker-compose -f docker-compose.prod.yml ps
 
 # 查看日志
-docker-compose -f docker/docker-compose.prod.yml logs -f
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-### 3. 访问生产服务
+#### 4. 访问生产服务
 
 - **前端**: http://your-domain:5176
 - **主后端API**: http://your-domain:8000
 - **AI后端API**: http://your-domain:8001
 
-### 4. 生产环境管理
+#### 5. 生产环境管理
 
 ```powershell
 # 重启特定服务
-docker-compose -f docker/docker-compose.prod.yml restart backend
+docker-compose -f docker-compose.prod.yml restart backend
 
 # 查看资源使用情况
 docker stats
@@ -274,14 +285,51 @@ docker stats
 docker system prune -a
 ```
 
+### 直接在服务器部署（不使用 Docker）
+
+如果不使用 Docker，需要手动配置各个服务：
+
+```powershell
+# 1. 安装并配置 PostgreSQL 数据库
+
+# 2. 配置并启动 Backend
+cd Backend
+copy .env.example .env
+# 编辑 .env，配置数据库连接和 AI_BACKEND_URL
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+alembic upgrade head
+python run.py
+
+# 3. 配置并启动 AI Backend
+cd ..\AIBackend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python run.py
+
+# 4. 构建并部署 Frontend
+cd ..\Frontend
+# 编辑 .env.production
+npm install
+npm run build
+# 使用 Nginx 或其他 Web 服务器托管 dist/ 目录
+```
+
 ### 生产环境注意事项
 
-- ✅ 使用强密码 (`.env.prod` 中的 `PROD_DB_PASSWORD`)
-- ✅ 配置HTTPS (建议使用Nginx反向代理 + Let's Encrypt)
+- ⚠️ **数据库密码安全**: 
+  - Docker 部署：修改 `docker-compose.prod.yml` 中的 `POSTGRES_PASSWORD`
+  - 直接部署：在 `Backend/.env` 中配置强密码
+- ⚠️ **Backend 配置**: 创建 `Backend/.env` 文件并配置数据库连接、AI Backend URL 等
+- ⚠️ **Frontend API地址**: 编辑 `Frontend/.env.production`，设置正确的 `VITE_API_BASE_URL`
+- ⚠️ **AI 密钥**: 百度文心一言 API Key 通过前端界面配置，无需在服务器端设置
+- ✅ 配置 HTTPS (建议使用 Nginx 反向代理 + Let's Encrypt)
 - ✅ 定期备份数据库
 - ✅ 监控日志和资源使用
 - ✅ 设置防火墙规则，仅开放必要端口
-- ❌ 生产环境不包含Adminer
+- ❌ 生产环境不包含 Adminer
 
 ## 自动化部署与热更新
 
@@ -353,7 +401,7 @@ python auto_update.py --start --verbose
 
 - ⚠️ 确保服务器上的Git仓库配置了正确的远程地址和认证
 - ⚠️ 首次运行建议使用 `--start` 参数，会先执行一次完整部署
-- ⚠️ 生产环境部署需要确保 `.env.prod` 文件已正确配置
+- ⚠️ 生产环境部署前需要修改 `docker-compose.prod.yml` 中的敏感配置（数据库密码、API密钥等）
 - ⚠️ 更新过程中服务会短暂中断，建议配置健康检查和负载均衡
 
 ## 贡献指南
