@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import EmailStr
+import json
 
 
 class Settings(BaseSettings):
@@ -53,7 +54,6 @@ class Settings(BaseSettings):
         text = raw.strip()
         # 可能是 '["https://a.com","https://b.com"]'
         if text.startswith("[") and text.endswith("]"):
-            import json
             try:
                 data = json.loads(text)
                 if isinstance(data, list):
