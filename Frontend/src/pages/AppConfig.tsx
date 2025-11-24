@@ -368,8 +368,15 @@ function AppConfig() {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
+                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>服务器调用点</Text>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>服务器调用点</Text>
+                  <Text style={{
+                    fontSize: '18px',
+                    fontWeight: '700',
+                    color: '#fa8c16'
+                  }}>
+                    {displayUserInfo.serverCredits.toFixed(1)}
+                  </Text>
                   <Button
                     type="text"
                     size="small"
@@ -383,13 +390,6 @@ function AppConfig() {
                     }}
                   />
                 </div>
-                <Text style={{
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  color: '#fa8c16'
-                }}>
-                  {displayUserInfo.serverCredits.toFixed(1)}
-                </Text>
               </div>
             </Card>
 
