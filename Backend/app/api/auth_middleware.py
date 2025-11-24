@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status, Cookie
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer
 from typing import Optional
 from pydantic import BaseModel
@@ -17,12 +17,12 @@ class UserInfo(BaseModel):
     server_credits: float = 0.0
 
 
-def get_current_user(session_id: Optional[str] = Cookie(None, alias="session_id")) -> Optional[UserInfo]:
-    """获取当前用户信息（依赖注入）"""
-    if not session_id:
+def get_current_user(x_session_id: Optional[str] = Header(None, alias="X-Session-ID")) -> Optional[UserInfo]:
+    """获取当前用户信息（依赖注入）- 从 HTTP Header 读取 session"""
+    if not x_session_id:
         return None
 
-    session = db_session_manager.validate_session(session_id)
+    session = db_session_manager.validate_session(x_session_id)
     if not session:
         return None
 

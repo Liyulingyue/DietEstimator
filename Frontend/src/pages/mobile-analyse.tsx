@@ -3,7 +3,7 @@ import Gallery from '../components/Gallery';
 import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { getApiUrl } from '../api';
-import { isLogin } from '../utils/auth';
+import { isLogin, getSessionId } from '../utils/auth';
 import { shareToGallery } from '../utils/api';
 import type { ShareToGalleryRequest } from '../utils/api';
 import { useState } from 'react';
@@ -129,12 +129,16 @@ export default function MobileAnalyse() {
       }
       
       // 调用后端保存记录接口
+      const sessionId = getSessionId();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (sessionId) {
+        headers['X-Session-ID'] = sessionId;
+      }
       const response = await fetch(getApiUrl('/api/v1/food_estimate/save_record'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // 包含cookies以进行认证
+        headers: headers,
         body: JSON.stringify({
           analysis_result: resultToSave, // 传递完整的分析结果作为JSON
           analysis_method: 'pure_llm', // 这里可以根据实际情况调整

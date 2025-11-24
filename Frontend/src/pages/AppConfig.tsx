@@ -115,7 +115,6 @@ function AppConfig() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // 包含cookies
         body: JSON.stringify({
           username: username,
           password: password,

@@ -31,7 +31,6 @@ export default function Debug() {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           username: 'debug_test',
           password: 'debug_test',

@@ -14,7 +14,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# 设置 CORS
+# 设置 CORS 中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 在生产环境中应该设置具体的域名

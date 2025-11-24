@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Input, Form, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { setSessionInfo } from '../utils/auth';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,6 @@ export default function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include', // 包含cookies
         body: JSON.stringify({
           username: username,
           password: password,
@@ -37,12 +37,16 @@ export default function Login() {
       console.log('DEBUG login - 后端响应数据:', result);
 
       if (result.success) {
-        // 保存session_id到localStorage，以便后续API调用使用
-        if (result.session_id) {
-          localStorage.setItem('session_id', result.session_id);
-          console.log('✅ Session ID已保存到localStorage:', result.session_id);
+        // 保存session信息到localStorage
+        if (result.session_id && result.username && result.user_id) {
+          setSessionInfo(result.session_id, result.username, result.user_id);
+          console.log('✅ Session信息已保存到localStorage:', {
+            sessionId: result.session_id,
+            username: result.username,
+            userId: result.user_id
+          });
         } else {
-          console.warn('⚠️  后端响应中没有session_id字段');
+          console.warn('⚠️  后端响应中缺少必要字段');
         }
         
         message.success('登录成功');

@@ -4,7 +4,7 @@ import ResponsiveLayout from '../components/ResponsiveLayout';
 import PageHeader from '../components/PageHeader';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isLogin, getUserId } from '../utils/auth';
+import { isLogin, getUserId, getSessionId } from '../utils/auth';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -91,9 +91,15 @@ export default function MobilePanel() {
   const fetchTodayRecords = async (userId: string, targetDate?: Date) => {
     try {
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`;
+      const sessionId = getSessionId();
+      const headers: HeadersInit = {};
+      if (sessionId) {
+        headers['X-Session-ID'] = sessionId;
+      }
+      
       const response = await fetch(`${apiUrl}/api/v1/records/${userId}`, {
         method: 'GET',
-        credentials: 'include',
+        headers: headers,
       });
 
       if (response.ok) {
@@ -474,12 +480,15 @@ export default function MobilePanel() {
           }
 
           const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`;
-          const response = await fetch(`${apiUrl}/api/v1/records/${userId}/${record.id}`, {
-            method: 'DELETE',
-            credentials: 'include',
-          });
-
-          if (response.ok) {
+      const sessionId = getSessionId();
+      const headers: HeadersInit = {};
+      if (sessionId) {
+        headers['X-Session-ID'] = sessionId;
+      }
+      const response = await fetch(`${apiUrl}/api/v1/records/${userId}/${record.id}`, {
+        method: 'DELETE',
+        headers: headers,
+      });          if (response.ok) {
             message.success({
               content: (
                 <div style={{
@@ -544,9 +553,14 @@ export default function MobilePanel() {
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`;
 
       // 先删除旧记录
+      const sessionId = getSessionId();
+      const headers: HeadersInit = {};
+      if (sessionId) {
+        headers['X-Session-ID'] = sessionId;
+      }
       const deleteResponse = await fetch(`${apiUrl}/api/v1/records/${userId}/${editingRecord.id}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: headers,
       });
 
       if (!deleteResponse.ok) {
@@ -556,12 +570,16 @@ export default function MobilePanel() {
       }
 
       // 然后添加新记录
+      const sessionId2 = getSessionId();
+      const headers2: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (sessionId2) {
+        headers2['X-Session-ID'] = sessionId2;
+      }
       const addResponse = await fetch(`${apiUrl}/api/v1/food_estimate/save_record`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: headers2,
         body: JSON.stringify({
           analysis_result: newAnalysisResult,
           analysis_method: editingRecord.analysis_method || 'pure_llm',

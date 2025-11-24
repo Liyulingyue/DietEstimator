@@ -1,5 +1,5 @@
 // 测试 mobile-panel 页面的登录状态和数据获取功能
-import { isLogin, getUserId } from '../utils/auth';
+import { isLogin, getUserId, getSessionId } from '../utils/auth';
 
 export const testMobilePanel = async () => {
   console.log('测试 mobile-panel 功能...');
@@ -17,9 +17,14 @@ export const testMobilePanel = async () => {
       if (userId) {
         // 测试获取今日记录
         const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}`;
+        const sessionId = getSessionId();
+        const headers: HeadersInit = {};
+        if (sessionId) {
+          headers['X-Session-ID'] = sessionId;
+        }
         const response = await fetch(`${apiUrl}/api/v1/records/${userId}`, {
           method: 'GET',
-          credentials: 'include',
+          headers: headers,
         });
 
         if (response.ok) {

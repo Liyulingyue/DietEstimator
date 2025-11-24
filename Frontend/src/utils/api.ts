@@ -1,6 +1,24 @@
-import { getUserInfo } from './auth';
+import { getSessionId, getUserInfo } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+/**
+ * 创建带有 session header 的请求配置
+ */
+function createHeaders(contentType: string = 'application/json'): HeadersInit {
+  const headers: HeadersInit = {};
+  
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+  
+  const sessionId = getSessionId();
+  if (sessionId) {
+    headers['X-Session-ID'] = sessionId;
+  }
+  
+  return headers;
+}
 
 /**
  * AI分析配置接口
@@ -41,45 +59,6 @@ function dataURLtoFile(dataUrl: string, filename: string): File {
     u8arr[i] = bstr.charCodeAt(i);
   }
   return new File([u8arr], filename, { type: mime });
-}
-
-/**
- * 从cookie或localStorage中获取session_id
- */
-export function getSessionId(): string {
-  // 首先尝试从cookie中获取（用于httponly cookie的自动传递）
-  // 但由于httponly属性，JavaScript无法直接访问
-  // 所以主要依赖于credentials: 'include'来自动传递cookie
-  
-  // 作为备选方案，从localStorage获取session_id用于API调用
-  const sessionIdFromStorage = localStorage.getItem('session_id');
-  console.log('DEBUG getSessionId - sessionIdFromStorage:', sessionIdFromStorage);
-  if (sessionIdFromStorage) {
-    console.log('DEBUG getSessionId - 从localStorage返回:', sessionIdFromStorage);
-    return sessionIdFromStorage;
-  }
-  
-  // 如果都没有，尝试从document.cookie获取（非httponly的情况）
-  const name = 'session_id=';
-  try {
-    const decodedCookie = decodeURIComponent(document.cookie);
-    console.log('DEBUG getSessionId - document.cookie:', decodedCookie);
-    const cookieArray = decodedCookie.split(';');
-    
-    for (let cookie of cookieArray) {
-      cookie = cookie.trim();
-      if (cookie.indexOf(name) === 0) {
-        const sessionId = cookie.substring(name.length);
-        console.log('DEBUG getSessionId - 从cookie返回:', sessionId);
-        return sessionId;
-      }
-    }
-  } catch (e) {
-    console.warn('无法从cookie读取session_id:', e);
-  }
-  
-  console.log('DEBUG getSessionId - 返回空字符串');
-  return '';
 }
 
 /**
@@ -136,10 +115,16 @@ export async function analyzeFood(
       formData.append('files', file);
     });
 
+    // 创建headers（FormData时不设置Content-Type，让浏览器自动设置）
+    const headers: HeadersInit = {};
+    if (sessionId) {
+      headers['X-Session-ID'] = sessionId;
+    }
+
     // 调用后端API
     const response = await fetch(`${API_BASE_URL}/api/v1/food_estimate/analyze`, {
       method: 'POST',
-      credentials: 'include',
+      headers: headers,
       body: formData,
     });
 
@@ -170,7 +155,7 @@ export async function analyzeFood(
 export async function getAvailableMethods(): Promise<any[]> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/methods`, {
-      credentials: 'include',
+      headers: createHeaders(),
     });
 
     if (!response.ok) {
@@ -225,10 +210,16 @@ export async function getGalleryShares(
   limit: number = 20
 ): Promise<GalleryShareListResponse> {
   try {
+    const sessionId = getSessionId();
+    const headers: HeadersInit = {};
+    if (sessionId) {
+      headers['X-Session-ID'] = sessionId;
+    }
+    
     const response = await fetch(
       `${API_BASE_URL}/api/v1/gallery/list?skip=${skip}&limit=${limit}`,
       {
-        credentials: 'include',
+        headers: headers,
       }
     );
 
@@ -256,10 +247,7 @@ export async function shareToGallery(
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/gallery/share`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
+      headers: createHeaders(),
       body: JSON.stringify(shareData),
     });
 
@@ -295,9 +283,15 @@ export async function deleteGalleryShare(
   shareId: number
 ): Promise<{ success: boolean; message: string }> {
   try {
+    const sessionId = getSessionId();
+    const headers: HeadersInit = {};
+    if (sessionId) {
+      headers['X-Session-ID'] = sessionId;
+    }
+    
     const response = await fetch(`${API_BASE_URL}/api/v1/gallery/share/${shareId}`, {
       method: 'DELETE',
-      credentials: 'include',
+      headers: headers,
     });
 
     if (!response.ok) {

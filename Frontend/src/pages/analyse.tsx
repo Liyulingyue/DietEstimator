@@ -4,7 +4,7 @@ import Gallery from '../components/Gallery';
 import { Card, Typography, Empty, Spin, Divider, Button, message, Modal, Form, Input, InputNumber } from 'antd';
 import { CopyOutlined, SaveOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { getApiUrl } from '../api';
-import { isLogin } from '../utils/auth';
+import { isLogin, getSessionId } from '../utils/auth';
 
 const { Title, Text } = Typography;
 
@@ -137,12 +137,16 @@ export default function Analyse() {
         resultToSave.food_name = values.food_name;
         resultToSave.calories = values.calories;
       }      // 调用后端保存记录接口
+      const sessionId = getSessionId();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (sessionId) {
+        headers['X-Session-ID'] = sessionId;
+      }
       const response = await fetch(getApiUrl('/api/v1/food_estimate/save_record'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // 包含cookies以进行认证
+        headers: headers,
         body: JSON.stringify({
           analysis_result: resultToSave, // 传递完整的分析结果作为JSON
           analysis_method: analysisResult.method || 'pure_llm',

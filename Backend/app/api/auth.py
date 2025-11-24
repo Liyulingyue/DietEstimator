@@ -3,7 +3,7 @@
 提供登录、登出和session管理相关的API
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Response, Cookie, Request
+from fastapi import APIRouter, HTTPException, Depends, Response, Header, Request
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel
 from typing import Optional
@@ -116,7 +116,6 @@ def authenticate_user(db: Session, username: str, password: str) -> tuple[User, 
 @router.post("/login", response_model=LoginResponse)
 async def login(
     request: LoginRequest,
-    response: Response,
     req: Request,
     db: Session = Depends(get_db)
 ):
@@ -140,23 +139,13 @@ async def login(
             user_agent=user_agent
         )
 
-        # 设置session cookie
-        response.set_cookie(
-            key="session_id",
-            value=session_id,
-            httponly=True,  # 防止JavaScript访问
-            secure=False,   # 开发环境使用false，生产环境使用true
-            samesite="lax",
-            max_age=3600 * 24 * 7  # 7天
-        )
-
         # 根据是否新用户生成不同的提示信息
         if is_new_user:
             login_message = "欢迎加入！新账号已自动创建并登录成功。"
         else:
             login_message = "欢迎回来！"
 
-        logger.info(f"用户 {request.username} 登录成功（{'新用户' if is_new_user else '现有用户'}），session_id: {session_id}")
+        logger.info(f"用户 {request.username} 登录成功（{'new user' if is_new_user else 'existing user'}），session_id: {session_id}")
 
         return LoginResponse(
             success=True,
@@ -175,19 +164,13 @@ async def login(
 
 @router.post("/logout")
 async def logout(
-    response: Response,
-    session_id: Optional[str] = Cookie(None, alias="session_id")
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID")
 ):
     """用户登出"""
     try:
-        if session_id:
-            db_session_manager.invalidate_session(session_id)
-            logger.info(f"session {session_id} 已失效")
-
-        # 清除session cookie
-        response.delete_cookie(
-            key="session_id",
-            httponly=True,
+        if x_session_id:
+            db_session_manager.invalidate_session(x_session_id)
+            logger.info(f"session {x_session_id} 已失效")
             secure=False,
             samesite="lax"
         )
