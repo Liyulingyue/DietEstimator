@@ -1,8 +1,8 @@
 import { Button, Card, Select, Space, Typography, Avatar, Input, message, Form, Modal, InputNumber } from 'antd'
-import { UserOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined, FireOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, RobotOutlined, KeyOutlined, SettingOutlined, ApiOutlined, FireOutlined, PlusOutlined } from '@ant-design/icons'
 import ResponsiveLayout from '../components/ResponsiveLayout'
 import PageHeader from '../components/PageHeader'
-import { logout, getUserInfo } from '../utils/auth'
+import { logout, getUserInfo, resetCredits } from '../utils/auth'
 import { useState, useEffect } from 'react'
 
 const { Title, Text } = Typography;
@@ -14,6 +14,8 @@ function AppConfig() {
   const [testLoading, setTestLoading] = useState(false);
   const [testModalVisible, setTestModalVisible] = useState(false);
   const [testResult, setTestResult] = useState<{status: string, message: string, response?: string} | null>(null);
+  const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   // 登录状态管理
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -200,6 +202,30 @@ function AppConfig() {
     console.log('重置AI配置:', defaultConfig);
   };
 
+  const handleResetCredits = async () => {
+    setResetLoading(true);
+    try {
+      const result = await resetCredits();
+      if (result && result.success) {
+        message.success(result.message || '成功充值20个调用点');
+        setResetModalVisible(false);
+        
+        // 重新获取用户信息以更新显示
+        const userData = await getUserInfo();
+        if (userData && userData.is_logged_in) {
+          setUserInfo(userData);
+        }
+      } else {
+        message.error(result?.message || '充值失败，请稍后重试');
+      }
+    } catch (error) {
+      console.error('充值调用点失败:', error);
+      message.error('充值失败，请检查网络连接');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleTestConnection = async () => {
     if (!aiConfig.modelUrl.trim() || !aiConfig.modelName.trim() || !aiConfig.apiKey.trim()) {
       message.error('请先填写完整的AI配置信息');
@@ -342,7 +368,21 @@ function AppConfig() {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>服务器调用点</Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Text style={{ fontSize: '14px', color: '#8c8c8c' }}>服务器调用点</Text>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => setResetModalVisible(true)}
+                    style={{
+                      fontSize: '12px',
+                      color: '#1890ff',
+                      padding: '0 4px',
+                      height: '20px'
+                    }}
+                  />
+                </div>
                 <Text style={{
                   fontSize: '18px',
                   fontWeight: '700',
@@ -696,6 +736,83 @@ function AppConfig() {
           </Space>
         </Space>
           </>
+
+          {/* 重置调用点确认弹窗 */}
+          <Modal
+            title={
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1890ff'
+              }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: 'linear-gradient(135deg, #fa8c16, #ff7a45)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <PlusOutlined style={{ fontSize: '16px', color: 'white' }} />
+                </div>
+                充值服务器调用点
+              </div>
+            }
+            open={resetModalVisible}
+            onCancel={() => setResetModalVisible(false)}
+            footer={[
+              <Button
+                key="cancel"
+                onClick={() => setResetModalVisible(false)}
+                style={{
+                  borderRadius: '8px',
+                  height: '36px',
+                  fontWeight: '500'
+                }}
+              >
+                取消
+              </Button>,
+              <Button
+                key="confirm"
+                type="primary"
+                loading={resetLoading}
+                onClick={handleResetCredits}
+                style={{
+                  borderRadius: '8px',
+                  height: '36px',
+                  fontWeight: '500',
+                  background: 'linear-gradient(135deg, #fa8c16, #ff7a45)',
+                  border: 'none'
+                }}
+              >
+                确认充值
+              </Button>
+            ]}
+            width={500}
+            centered
+            styles={{
+              body: {
+                padding: '24px',
+                background: 'linear-gradient(180deg, #fff7e6 0%, #ffffff 100%)'
+              }
+            }}
+          >
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎁</div>
+              <div style={{ fontSize: '16px', color: '#262626', marginBottom: '12px', fontWeight: '500' }}>
+                确认要充值调用点吗？
+              </div>
+              <div style={{ fontSize: '14px', color: '#8c8c8c', lineHeight: '1.6' }}>
+                点击确认后将为您的账户充值 <span style={{ color: '#fa8c16', fontWeight: '600' }}>20个调用点</span>
+                <br />
+                当前余额: <span style={{ color: '#fa8c16', fontWeight: '600' }}>{displayUserInfo.serverCredits.toFixed(1)}</span> 点
+              </div>
+            </div>
+          </Modal>
 
           {/* 测试连接结果弹窗 */}
           <Modal

@@ -151,3 +151,18 @@ export async function consumeCredits(credits: number): Promise<{success: boolean
     return null;
   }
 }
+
+// 充值服务器调用点（增加20点）
+export async function resetCredits(): Promise<{success: boolean, message: string, server_credits: number} | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/reset-credits`, {
+      method: 'POST',
+      headers: createHeaders(),
+    });
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('充值服务器调用点失败:', error);
+    return null;
+  }
+}

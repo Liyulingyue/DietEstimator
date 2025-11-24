@@ -286,3 +286,34 @@ async def get_server_credits(
     except Exception as e:
         logger.error(f"获取调用点信息时发生错误: {e}")
         raise HTTPException(status_code=500, detail="获取信息失败，请稍后重试")
+
+
+@router.post("/reset-credits")
+async def reset_server_credits(
+    current_user: UserInfo = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """充值服务器调用点（增加20点）"""
+    try:
+        user = db.query(User).filter(User.id == int(current_user.user_id)).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="用户不存在")
+
+        # 增加20个调用点
+        user.server_credits += 20.0
+        db.commit()
+
+        logger.info(f"用户 {current_user.username} 充值调用点，当前余额: {user.server_credits}")
+
+        return {
+            "success": True,
+            "message": "成功充值20个调用点",
+            "server_credits": user.server_credits
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"充值调用点时发生错误: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="操作失败，请稍后重试")
