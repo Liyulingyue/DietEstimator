@@ -110,7 +110,7 @@ export default function BowelRecognition() {
       // 调用API进行分析
       const result = await analyzeBowel({
         files: files,
-        session_id: getSessionId(),
+        session_id: getSessionId() ?? undefined,
         method: 'pure_llm',
         call_preference: 'server' // 优先使用服务器配置
       });
