@@ -37,6 +37,10 @@ export default function Login() {
       console.log('DEBUG login - 后端响应数据:', result);
 
       if (result.success) {
+        console.log('✅ 登录成功，准备保存session信息');
+        console.log('✅ result.session_id:', result.session_id);
+        console.log('✅ result.username:', result.username);
+        console.log('✅ result.user_id:', result.user_id);
         // 保存session信息到localStorage
         if (result.session_id && result.username && result.user_id) {
           setSessionInfo(result.session_id, result.username, result.user_id);
@@ -45,12 +49,25 @@ export default function Login() {
             username: result.username,
             userId: result.user_id
           });
+          
+          // 立即验证localStorage是否正确保存
+          const savedSessionId = localStorage.getItem('sessionId');
+          const savedUsername = localStorage.getItem('username');
+          const savedUserId = localStorage.getItem('userId');
+          console.log('🔍 验证localStorage保存结果:', {
+            savedSessionId,
+            savedUsername,
+            savedUserId
+          });
         } else {
           console.warn('⚠️  后端响应中缺少必要字段');
         }
         
         message.success('登录成功');
-        navigate('/');
+        // 等待 localStorage 保存完成后再跳转
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
       } else {
         message.error(result.message || '登录失败');
       }

@@ -147,13 +147,15 @@ async def login(
 
         logger.info(f"用户 {request.username} 登录成功（{'new user' if is_new_user else 'existing user'}），session_id: {session_id}")
 
-        return LoginResponse(
+        response_data = LoginResponse(
             success=True,
             message=f"登录成功。{login_message}",
             user_id=str(user.id),
             username=user.username,
             session_id=session_id
         )
+        print(f"🔍 login - 返回响应数据: {response_data}")
+        return response_data
 
     except HTTPException:
         raise
@@ -171,9 +173,6 @@ async def logout(
         if x_session_id:
             db_session_manager.invalidate_session(x_session_id)
             logger.info(f"session {x_session_id} 已失效")
-            secure=False,
-            samesite="lax"
-        )
 
         return {"success": True, "message": "登出成功"}
 
@@ -185,9 +184,14 @@ async def logout(
 @router.get("/me", response_model=UserInfo)
 async def get_current_user_info(current_user: Optional[UserInfo] = Depends(get_current_user)):
     """获取当前用户信息"""
-    if not current_user:
-        return UserInfo(user_id="", username="", is_logged_in=False)
+    print(f"🔍 /me - current_user: {current_user}")
 
+    if not current_user:
+        result = UserInfo(user_id="", username="", is_logged_in=False)
+        print(f"🔍 /me - 返回未登录状态: {result}")
+        return result
+
+    print(f"🔍 /me - 返回用户信息: {current_user}")
     return current_user
 
 

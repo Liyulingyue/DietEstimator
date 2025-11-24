@@ -53,14 +53,27 @@ function createHeaders(): HeadersInit {
 // 检查是否已登录
 export async function isLogin(): Promise<boolean> {
   try {
+    const sessionId = getSessionId();
+    console.log('🔍 isLogin - 检查session_id:', sessionId);
+
+    const headers = createHeaders();
+    console.log('🔍 isLogin - 请求headers:', headers);
+
     const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
       method: 'GET',
-      headers: createHeaders(),
+      headers: headers,
     });
+
+    console.log('🔍 isLogin - 响应状态:', response.status);
     const data = await response.json();
-    return data.is_logged_in || false;
+    console.log('🔍 isLogin - 响应数据:', data);
+
+    const isLoggedIn = data.is_logged_in || false;
+    console.log('🔍 isLogin - 登录状态:', isLoggedIn);
+
+    return isLoggedIn;
   } catch (error) {
-    console.error('检查登录状态失败:', error);
+    console.error('❌ 检查登录状态失败:', error);
     return false;
   }
 }

@@ -93,10 +93,6 @@ function AppConfig() {
       setIsLoggedIn(false);
       setUserInfo(null);
       
-      // 清除localStorage中保存的session_id
-      localStorage.removeItem('session_id');
-      console.log('Session ID已从localStorage中清除');
-      
       message.success('已退出登录');
     } catch (error) {
       console.error('登出失败:', error);
@@ -126,10 +122,12 @@ function AppConfig() {
       if (result.success) {
         message.success('登录成功');
         
-        // 保存session_id到localStorage，以便后续API调用使用
-        if (result.session_id) {
-          localStorage.setItem('session_id', result.session_id);
-          console.log('Session ID已保存到localStorage');
+        // 保存session信息到localStorage
+        if (result.session_id && result.username && result.user_id) {
+          // 使用 setSessionInfo 统一保存，确保键名一致
+          const { setSessionInfo } = await import('../utils/auth');
+          setSessionInfo(result.session_id, result.username, result.user_id);
+          console.log('Session信息已保存到localStorage');
         }
         
         // 重新检查登录状态

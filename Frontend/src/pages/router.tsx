@@ -35,7 +35,7 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
     };
 
     checkAuth();
-  }, []);
+  }, [location.pathname]);
 
   if (isLoading) {
     // 显示加载状态

@@ -19,11 +19,17 @@ class UserInfo(BaseModel):
 
 def get_current_user(x_session_id: Optional[str] = Header(None, alias="X-Session-ID")) -> Optional[UserInfo]:
     """获取当前用户信息（依赖注入）- 从 HTTP Header 读取 session"""
+    print(f"🔍 get_current_user - 收到session_id: {x_session_id}")
+
     if not x_session_id:
+        print("🔍 get_current_user - 没有session_id，返回None")
         return None
 
     session = db_session_manager.validate_session(x_session_id)
+    print(f"🔍 get_current_user - session验证结果: {session}")
+
     if not session:
+        print("🔍 get_current_user - session无效，返回None")
         return None
 
     # 从数据库获取用户的服务器调用点信息
@@ -31,12 +37,14 @@ def get_current_user(x_session_id: Optional[str] = Header(None, alias="X-Session
         user = db.query(User).filter(User.id == int(session.user_id)).first()
         server_credits = user.server_credits if user else 0.0
 
-    return UserInfo(
+    user_info = UserInfo(
         user_id=session.user_id,
         username=session.username,
         is_logged_in=True,
         server_credits=server_credits
     )
+    print(f"🔍 get_current_user - 返回用户信息: {user_info}")
+    return user_info
 
 
 def require_auth(current_user: Optional[UserInfo] = Depends(get_current_user)) -> UserInfo:
